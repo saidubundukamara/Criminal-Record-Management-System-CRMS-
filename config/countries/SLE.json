@@ -1,0 +1,96 @@
+{
+  "countryCode": "SLE",
+  "countryName": "Sierra Leone",
+  "capital": "Freetown",
+
+  "nationalIdSystem": {
+    "type": "NIN",
+    "displayName": "National Identification Number (NIN)",
+    "format": "XXXX-XXXX-XXXX",
+    "validationRegex": "^[0-9]{4}-[0-9]{4}-[0-9]{4}$",
+    "length": 14
+  },
+
+  "language": {
+    "default": "en",
+    "supported": ["en", "kri"],
+    "dateFormat": "DD/MM/YYYY",
+    "timeFormat": "12h"
+  },
+
+  "currency": {
+    "code": "SLE",
+    "symbol": "Le",
+    "name": "Sierra Leonean Leone"
+  },
+
+  "policeStructure": {
+    "type": "centralized",
+    "levels": ["national", "regional", "district", "station"],
+    "ranks": [
+      "Inspector General (IG)",
+      "Deputy Inspector General (DIG)",
+      "Assistant Inspector General (AIG)",
+      "Chief Superintendent (CSP)",
+      "Superintendent (SP)",
+      "Assistant Superintendent (ASP)",
+      "Inspector (INS)",
+      "Sergeant (SGT)",
+      "Corporal (CPL)",
+      "Constable (PC)"
+    ]
+  },
+
+  "legalFramework": {
+    "dataProtectionAct": "Data Protection Act, 2023",
+    "penalCode": "The Criminal Procedure Act, 1965",
+    "evidenceAct": "Evidence Act, 1965"
+  },
+
+  "offenseCategories": [
+    {
+      "code": "01",
+      "name": "Offences Against the Person",
+      "subcategories": ["Murder", "Manslaughter", "Assault", "Kidnapping", "Rape"]
+    },
+    {
+      "code": "02",
+      "name": "Offences Against Property",
+      "subcategories": ["Theft", "Robbery", "Burglary", "Arson"]
+    },
+    {
+      "code": "03",
+      "name": "Fraud and Economic Crimes",
+      "subcategories": ["Fraud", "Embezzlement", "Forgery", "Cyber Crime"]
+    },
+    {
+      "code": "04",
+      "name": "Drug Offences",
+      "subcategories": ["Drug Trafficking", "Drug Possession"]
+    },
+    {
+      "code": "05",
+      "name": "Public Order Offences",
+      "subcategories": ["Riot", "Unlawful Assembly", "Affray"]
+    }
+  ],
+
+  "telecom": {
+    "ussdGateways": ["Orange", "Africell", "Qcell"],
+    "ussdShortcode": "*456#",
+    "smsProvider": "africas-talking",
+    "smsApiKey": "env:USSD_API_KEY"
+  },
+
+  "integrations": {
+    "nationalIdRegistry": {
+      "enabled": false,
+      "apiEndpoint": null,
+      "apiKey": null
+    },
+    "courtSystem": {
+      "enabled": false,
+      "apiEndpoint": null
+    }
+  }
+}

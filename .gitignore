@@ -1,8 +1,8 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
-/node_modules
-/.pnp
+# Dependencies
+node_modules/
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -10,32 +10,74 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
+# Testing
+coverage/
+.nyc_output
+*.lcov
 
-# next.js
-/.next/
-/out/
+# Next.js
+.next/
+out/
+build/
+dist/
 
-# production
-/build
+# Environment Variables (NEVER commit secrets!)
+.env
+.env*.local
+.env.production
+.env.test
 
-# misc
-.DS_Store
-*.pem
-
-# debug
+# Logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
+logs/
+*.log
 
-# env files (can opt-in for committing if needed)
-.env*
+# IDE & Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
 
-# vercel
-.vercel
+# OS
+Thumbs.db
+.DS_Store
 
-# typescript
+# Prisma
+prisma/*.db
+prisma/*.db-journal
+migrations/*.sql.bak
+
+# Uploads & Storage (local development)
+uploads/
+public/uploads/
+temp/
+.tmp/
+
+# Certificates & Keys (NEVER commit!)
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+
+# Docker
+.dockerignore.bak
+
+# TypeScript
 *.tsbuildinfo
 next-env.d.ts
+
+# Vercel
+.vercel
+
+# Local testing data
+test-data/
+*.test.db
+
+CLAUDE.md
+.claude

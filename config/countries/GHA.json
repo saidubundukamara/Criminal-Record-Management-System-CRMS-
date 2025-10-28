@@ -1,0 +1,95 @@
+{
+  "countryCode": "GHA",
+  "countryName": "Ghana",
+  "capital": "Accra",
+
+  "nationalIdSystem": {
+    "type": "GHANA_CARD",
+    "displayName": "Ghana Card",
+    "format": "GHA-XXXXXXXXX-X",
+    "validationRegex": "^GHA-[0-9]{9}-[0-9]$",
+    "length": 15
+  },
+
+  "language": {
+    "default": "en",
+    "supported": ["en", "tw", "ee", "ak"],
+    "dateFormat": "DD/MM/YYYY",
+    "timeFormat": "24h"
+  },
+
+  "currency": {
+    "code": "GHS",
+    "symbol": "GH₵",
+    "name": "Ghanaian Cedi"
+  },
+
+  "policeStructure": {
+    "type": "centralized",
+    "levels": ["national", "regional", "district", "station"],
+    "ranks": [
+      "Inspector General of Police (IGP)",
+      "Deputy Inspector General (DIG)",
+      "Commissioner of Police (COP)",
+      "Assistant Commissioner (ACOS)",
+      "Superintendent",
+      "Inspector",
+      "Sergeant",
+      "Corporal",
+      "Constable"
+    ]
+  },
+
+  "legalFramework": {
+    "dataProtectionAct": "Data Protection Act, 2012 (Act 843)",
+    "penalCode": "Criminal Offences Act, 1960 (Act 29)",
+    "evidenceAct": "Evidence Act, 1975 (NRCD 323)"
+  },
+
+  "offenseCategories": [
+    {
+      "code": "01",
+      "name": "Offences Against the Person",
+      "subcategories": ["Murder", "Manslaughter", "Assault", "Kidnapping"]
+    },
+    {
+      "code": "02",
+      "name": "Offences Against Property",
+      "subcategories": ["Theft", "Robbery", "Burglary", "Arson"]
+    },
+    {
+      "code": "03",
+      "name": "Fraud and Economic Crimes",
+      "subcategories": ["Fraud", "Embezzlement", "Forgery", "Cyber Crime"]
+    },
+    {
+      "code": "04",
+      "name": "Drug and Narcotic Offences",
+      "subcategories": ["Drug Trafficking", "Drug Possession"]
+    },
+    {
+      "code": "05",
+      "name": "Public Order Offences",
+      "subcategories": ["Riot", "Unlawful Assembly", "Breach of Peace"]
+    }
+  ],
+
+  "telecom": {
+    "ussdGateways": ["MTN", "Vodafone", "AirtelTigo"],
+    "ussdShortcode": "*920#",
+    "smsProvider": "africas-talking",
+    "smsApiKey": "env:USSD_API_KEY"
+  },
+
+  "integrations": {
+    "nationalIdRegistry": {
+      "enabled": true,
+      "apiEndpoint": "https://api.nia.gov.gh/verify",
+      "apiKey": "env:NIA_API_KEY"
+    },
+    "courtSystem": {
+      "enabled": false,
+      "apiEndpoint": null
+    }
+  }
+}

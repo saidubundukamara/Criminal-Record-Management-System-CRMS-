@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Background circle -->
+  <circle cx="256" cy="256" r="256" fill="#1e40af"/>
+
+  <!-- Badge shield outline -->
+  <path d="M256 80 L180 120 L180 280 Q180 350 256 420 Q332 350 332 280 L332 120 Z"
+        fill="#3b82f6" stroke="#ffffff" stroke-width="8"/>
+
+  <!-- Star in center -->
+  <path d="M256 160 L276 220 L340 220 L288 260 L308 320 L256 280 L204 320 L224 260 L172 220 L236 220 Z"
+        fill="#ffffff"/>
+
+  <!-- Text "CRMS" -->
+  <text x="256" y="390" font-family="Arial, sans-serif" font-size="60" font-weight="bold"
+        text-anchor="middle" fill="#ffffff">CRMS</text>
+</svg>

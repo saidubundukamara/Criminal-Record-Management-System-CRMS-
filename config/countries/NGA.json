@@ -1,0 +1,100 @@
+{
+  "countryCode": "NGA",
+  "countryName": "Nigeria",
+  "capital": "Abuja",
+
+  "nationalIdSystem": {
+    "type": "NIN",
+    "displayName": "National Identification Number",
+    "format": "XXXXXXXXXXX",
+    "validationRegex": "^[0-9]{11}$",
+    "length": 11
+  },
+
+  "language": {
+    "default": "en",
+    "supported": ["en", "ha", "yo", "ig"],
+    "dateFormat": "DD/MM/YYYY",
+    "timeFormat": "24h"
+  },
+
+  "currency": {
+    "code": "NGN",
+    "symbol": "₦",
+    "name": "Nigerian Naira"
+  },
+
+  "policeStructure": {
+    "type": "federal",
+    "levels": ["national", "zonal", "state", "area", "division", "station"],
+    "ranks": [
+      "Inspector General (IGP)",
+      "Deputy Inspector General (DIG)",
+      "Assistant Inspector General (AIG)",
+      "Commissioner of Police (CP)",
+      "Deputy Commissioner (DCP)",
+      "Assistant Commissioner (ACP)",
+      "Chief Superintendent (CSP)",
+      "Superintendent (SP)",
+      "Deputy Superintendent (DSP)",
+      "Assistant Superintendent (ASP)",
+      "Inspector",
+      "Sergeant",
+      "Corporal",
+      "Constable"
+    ]
+  },
+
+  "legalFramework": {
+    "dataProtectionAct": "Nigeria Data Protection Regulation (NDPR), 2019",
+    "penalCode": "Criminal Code Act, Chapter 77, Laws of the Federation of Nigeria",
+    "evidenceAct": "Evidence Act, 2011"
+  },
+
+  "offenseCategories": [
+    {
+      "code": "01",
+      "name": "Offences Against the Person",
+      "subcategories": ["Murder", "Manslaughter", "Assault", "Kidnapping", "Rape"]
+    },
+    {
+      "code": "02",
+      "name": "Offences Against Property",
+      "subcategories": ["Theft", "Armed Robbery", "Burglary", "Arson", "Vandalism"]
+    },
+    {
+      "code": "03",
+      "name": "Economic and Financial Crimes",
+      "subcategories": ["Fraud", "Advance Fee Fraud (419)", "Cyber Crime", "Money Laundering"]
+    },
+    {
+      "code": "04",
+      "name": "Drug and Narcotic Offences",
+      "subcategories": ["Drug Trafficking", "Drug Possession", "Cultivation"]
+    },
+    {
+      "code": "05",
+      "name": "Public Order and Safety",
+      "subcategories": ["Terrorism", "Cultism", "Riot", "Unlawful Assembly"]
+    }
+  ],
+
+  "telecom": {
+    "ussdGateways": ["MTN", "Glo", "Airtel", "9mobile"],
+    "ussdShortcode": "*347#",
+    "smsProvider": "africas-talking",
+    "smsApiKey": "env:USSD_API_KEY"
+  },
+
+  "integrations": {
+    "nationalIdRegistry": {
+      "enabled": true,
+      "apiEndpoint": "https://api.nimc.gov.ng/verify",
+      "apiKey": "env:NIMC_API_KEY"
+    },
+    "courtSystem": {
+      "enabled": false,
+      "apiEndpoint": null
+    }
+  }
+}
