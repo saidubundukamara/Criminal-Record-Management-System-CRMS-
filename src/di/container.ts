@@ -26,6 +26,7 @@ import { ISyncQueueRepository } from "@/src/domain/interfaces/repositories/ISync
 import { IBackgroundCheckRepository } from "@/src/domain/interfaces/repositories/IBackgroundCheckRepository";
 import { IAmberAlertRepository } from "@/src/domain/interfaces/repositories/IAmberAlertRepository";
 import { IWantedPersonRepository } from "@/src/domain/interfaces/repositories/IWantedPersonRepository";
+import { IVehicleRepository } from "@/src/domain/interfaces/repositories/IVehicleRepository";
 
 // Repository Implementations
 import { OfficerRepository } from "@/src/repositories/implementations/OfficerRepository";
@@ -40,6 +41,7 @@ import { SyncQueueRepository } from "@/src/repositories/implementations/SyncQueu
 import { BackgroundCheckRepository } from "@/src/repositories/implementations/BackgroundCheckRepository";
 import { AmberAlertRepository } from "@/src/repositories/implementations/AmberAlertRepository";
 import { WantedPersonRepository } from "@/src/repositories/implementations/WantedPersonRepository";
+import { VehicleRepository } from "@/src/repositories/implementations/VehicleRepository";
 
 // Services
 import { AuthService } from "@/src/services/AuthService";
@@ -50,6 +52,7 @@ import { EvidenceService } from "@/src/services/EvidenceService";
 import { SyncService } from "@/src/services/SyncService";
 import { BackgroundCheckService } from "@/src/services/BackgroundCheckService";
 import { AlertService } from "@/src/services/AlertService";
+import { VehicleService } from "@/src/services/VehicleService";
 
 /**
  * Application Dependency Injection Container
@@ -74,6 +77,7 @@ export class Container {
   public readonly backgroundCheckRepository: IBackgroundCheckRepository;
   public readonly amberAlertRepository: IAmberAlertRepository;
   public readonly wantedPersonRepository: IWantedPersonRepository;
+  public readonly vehicleRepository: IVehicleRepository;
 
   // Services
   public readonly authService: AuthService;
@@ -84,6 +88,7 @@ export class Container {
   public readonly syncService: SyncService;
   public readonly backgroundCheckService: BackgroundCheckService;
   public readonly alertService: AlertService;
+  public readonly vehicleService: VehicleService;
 
   private constructor() {
     // Initialize Prisma Client
@@ -102,6 +107,7 @@ export class Container {
     this.backgroundCheckRepository = new BackgroundCheckRepository(this.prismaClient);
     this.amberAlertRepository = new AmberAlertRepository(this.prismaClient);
     this.wantedPersonRepository = new WantedPersonRepository(this.prismaClient);
+    this.vehicleRepository = new VehicleRepository(this.prismaClient);
 
     // Initialize Services with injected dependencies
     this.authService = new AuthService(
@@ -142,6 +148,11 @@ export class Container {
       this.amberAlertRepository,
       this.wantedPersonRepository,
       this.personRepository,
+      this.auditLogRepository
+    );
+
+    this.vehicleService = new VehicleService(
+      this.vehicleRepository,
       this.auditLogRepository
     );
   }

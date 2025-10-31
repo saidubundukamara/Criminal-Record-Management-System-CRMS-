@@ -31,6 +31,15 @@ model Officer {
   mfaEnabled      Boolean   @default(false)
   mfaSecret       String?   // TOTP secret (encrypted)
   mfaBackupCodes  String[]  // Encrypted backup codes
+
+  // USSD Authentication (Phase 7)
+  ussdPhoneNumber    String?   @unique
+  ussdQuickPinHash   String?   // Argon2id hash of 4-digit Quick PIN
+  ussdRegisteredAt   DateTime?
+  ussdLastUsed       DateTime?
+  ussdEnabled        Boolean   @default(false) // Admin must enable
+  ussdDailyLimit     Int       @default(50)
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -43,10 +52,12 @@ model Officer {
   wantedPersons     WantedPerson[]
   persons           Person[]
   sessions          Session[]
+  ussdQueries       USSDQueryLog[]
 
   @@index([badge])
   @@index([stationId])
   @@index([roleId])
+  @@index([ussdPhoneNumber])
   @@map("officers")
 }
 
@@ -108,6 +119,7 @@ model Station {
   active      Boolean   @default(true)
   officers    Officer[]
   cases       Case[]
+  vehicles    Vehicle[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -362,4 +374,53 @@ model SyncQueue {
   @@index([status])
   @@index([createdAt])
   @@map("sync_queue")
+}
+
+// ==================== PHASE 7: USSD & VEHICLE MANAGEMENT ====================
+
+model Vehicle {
+  id                String    @id @default(uuid())
+  licensePlate      String    @unique
+  ownerNIN          String?   // Links to Person.nationalId
+  ownerName         String?
+  vehicleType       String    // "car", "truck", "motorcycle", "bus", etc.
+  make              String?
+  model             String?
+  color             String?
+  year              Int?
+  status            String    @default("active") // "active", "stolen", "impounded"
+  stolenDate        DateTime?
+  stolenReportedBy  String?   // Officer ID
+  recoveredDate     DateTime?
+  notes             String?   @db.Text
+  stationId         String    // Where registered/reported
+  station           Station   @relation(fields: [stationId], references: [id])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([licensePlate])
+  @@index([status])
+  @@index([ownerNIN])
+  @@index([stationId])
+  @@map("vehicles")
+}
+
+model USSDQueryLog {
+  id              String    @id @default(uuid())
+  officerId       String
+  officer         Officer   @relation(fields: [officerId], references: [id])
+  phoneNumber     String
+  queryType       String    // "wanted", "missing", "background", "vehicle", "stats"
+  searchTerm      String    // NIN or license plate searched
+  resultSummary   String?   // Basic result (no PII)
+  success         Boolean   @default(true)
+  errorMessage    String?
+  timestamp       DateTime  @default(now())
+  sessionId       String?   // USSD session ID from Africa's Talking
+
+  @@index([officerId, timestamp])
+  @@index([phoneNumber, timestamp])
+  @@index([queryType])
+  @@index([timestamp])
+  @@map("ussd_query_logs")
 }
