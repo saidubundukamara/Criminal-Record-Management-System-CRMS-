@@ -56,6 +56,9 @@ import { VehicleService } from "@/src/services/VehicleService";
 import { AnalyticsService } from "@/src/services/AnalyticsService";
 import { ReportService } from "@/src/services/ReportService";
 import { PerformanceService } from "@/src/services/PerformanceService";
+import { OfficerService } from "@/src/services/OfficerService";
+import { StationService } from "@/src/services/StationService";
+import { RoleService } from "@/src/services/RoleService";
 
 /**
  * Application Dependency Injection Container
@@ -95,6 +98,9 @@ export class Container {
   public readonly analyticsService: AnalyticsService;
   public readonly reportService: ReportService;
   public readonly performanceService: PerformanceService;
+  public readonly officerService: OfficerService;
+  public readonly stationService: StationService;
+  public readonly roleService: RoleService;
 
   private constructor() {
     // Initialize Prisma Client
@@ -181,6 +187,26 @@ export class Container {
 
     // Phase 9: Performance monitoring service
     this.performanceService = new PerformanceService();
+
+    // Admin management services
+    this.officerService = new OfficerService(
+      this.officerRepository,
+      this.roleRepository,
+      this.stationRepository,
+      this.auditLogRepository
+    );
+
+    this.stationService = new StationService(
+      this.stationRepository,
+      this.auditLogRepository
+    );
+
+    this.roleService = new RoleService(
+      this.roleRepository,
+      this.permissionRepository,
+      this.officerRepository,
+      this.auditLogRepository
+    );
   }
 
   /**
