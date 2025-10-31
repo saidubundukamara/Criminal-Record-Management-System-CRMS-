@@ -14,6 +14,11 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { EvidenceTypeBadge } from "@/components/evidence/evidence-type-badge";
 import { EvidenceStatusBadge } from "@/components/evidence/evidence-status-badge";
+import { EvidenceStatusChangeDialog } from "@/components/evidence/evidence-status-change-dialog";
+import { AddCustodyEventDialog } from "@/components/evidence/add-custody-event-dialog";
+import { EvidenceSealDialog } from "@/components/evidence/evidence-seal-dialog";
+import { EvidenceDownloadButton } from "@/components/evidence/evidence-download-button";
+import { EvidenceQRCodeDisplay } from "@/components/evidence/evidence-qr-code-display";
 import {
   ArrowLeft,
   Edit,
@@ -117,11 +122,6 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
       {/* Evidence Header Card */}
       <div className="bg-white rounded-lg border p-6">
         <div className="flex flex-col sm:flex-row sm:items-start gap-6 mb-4">
-          <div className="flex-shrink-0 bg-gray-100 p-4 rounded-lg">
-            <QrCode className="h-24 w-24 text-gray-600" />
-            <p className="text-xs text-center mt-2 text-gray-600">Scan QR</p>
-          </div>
-
           <div className="flex-1">
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
@@ -272,11 +272,10 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
                 </div>
                 {evidenceData.fileUrl && (
                   <div>
-                    <Button variant="outline" size="sm" asChild>
-                      <a href={evidenceData.fileUrl} target="_blank" rel="noopener noreferrer">
-                        Download File
-                      </a>
-                    </Button>
+                    <EvidenceDownloadButton
+                      evidenceId={evidenceData.id}
+                      fileName={evidenceData.fileName}
+                    />
                   </div>
                 )}
               </dl>
@@ -315,9 +314,14 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
                   ({evidenceData.chainOfCustody.length} events)
                 </span>
               </h3>
-              <Button size="sm" variant="outline">
-                Add Event
-              </Button>
+              <AddCustodyEventDialog
+                evidenceId={evidenceData.id}
+                qrCode={evidenceData.qrCode}
+              >
+                <Button size="sm" variant="outline">
+                  Add Event
+                </Button>
+              </AddCustodyEventDialog>
             </div>
 
             {/* Timeline */}
@@ -458,26 +462,37 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
             </dl>
           </div>
 
+          {/* QR Code Display */}
+          <EvidenceQRCodeDisplay
+            qrCode={evidenceData.qrCode}
+            description={evidenceData.description}
+            evidenceType={evidenceData.type}
+          />
+
           {/* Quick Actions */}
           <div className="bg-white rounded-lg border p-6">
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               Quick Actions
             </h3>
             <div className="space-y-2">
-              <Button variant="outline" className="w-full justify-start">
-                Update Status
-              </Button>
-              {!evidenceData.isSealed && (
+              <EvidenceStatusChangeDialog
+                evidenceId={evidenceData.id}
+                currentStatus={evidenceData.status}
+                qrCode={evidenceData.qrCode}
+              >
                 <Button variant="outline" className="w-full justify-start">
-                  Seal Evidence
+                  Update Status
                 </Button>
-              )}
-              <Button variant="outline" className="w-full justify-start">
-                Add Custody Event
-              </Button>
-              <Button variant="outline" className="w-full justify-start">
-                Print QR Code
-              </Button>
+              </EvidenceStatusChangeDialog>
+              <EvidenceSealDialog
+                evidenceId={evidenceData.id}
+                qrCode={evidenceData.qrCode}
+                isSealed={evidenceData.isSealed}
+              />
+              <AddCustodyEventDialog
+                evidenceId={evidenceData.id}
+                qrCode={evidenceData.qrCode}
+              />
               <Button variant="outline" className="w-full justify-start">
                 Generate Report
               </Button>

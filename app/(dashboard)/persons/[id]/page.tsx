@@ -14,6 +14,8 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { PersonRiskBadge } from "@/components/persons/person-risk-badge";
 import { PersonWantedBadge } from "@/components/persons/person-wanted-badge";
+import { PersonRiskLevelDialog } from "@/components/persons/person-risk-level-dialog";
+import { PersonWantedToggleDialog } from "@/components/persons/person-wanted-toggle-dialog";
 import {
   ArrowLeft,
   Edit,
@@ -503,14 +505,16 @@ export default async function PersonDetailPage({ params }: PageProps) {
               Quick Actions
             </h3>
             <div className="space-y-2">
-              <Button variant="outline" className="w-full justify-start">
-                Update Risk Level
-              </Button>
-              {!personData.isWanted && (
-                <Button variant="outline" className="w-full justify-start">
-                  Mark as Wanted
-                </Button>
-              )}
+              <PersonRiskLevelDialog
+                personId={personData.id}
+                currentRiskLevel={personData.riskLevel}
+                personName={personData.fullName}
+              />
+              <PersonWantedToggleDialog
+                personId={personData.id}
+                isWanted={personData.isWanted}
+                personName={personData.fullName}
+              />
               <Button variant="outline" className="w-full justify-start">
                 Add to Case
               </Button>

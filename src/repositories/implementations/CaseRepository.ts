@@ -149,6 +149,23 @@ export class CaseRepository extends BaseRepository implements ICaseRepository {
     }, "findByOfficerId");
   }
 
+  async findByPersonId(personId: string): Promise<Case[]> {
+    return this.execute(async () => {
+      const cases = await this.prisma.case.findMany({
+        where: {
+          persons: {
+            some: {
+              personId: personId,
+            },
+          },
+        },
+        orderBy: { createdAt: "desc" },
+      });
+
+      return cases.map((c) => this.toDomain(c));
+    }, "findByPersonId");
+  }
+
   async count(filters?: CaseFilters): Promise<number> {
     return this.execute(async () => {
       const where = this.buildWhereClause(filters);

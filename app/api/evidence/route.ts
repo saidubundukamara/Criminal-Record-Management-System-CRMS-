@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * POST /api/evidence
- * Create new evidence
+ * Create new evidence with optional file upload
  */
 export async function POST(request: NextRequest) {
   try {
@@ -128,10 +128,67 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await request.json();
+    // Parse form data (supports file uploads)
+    const formData = await request.formData();
+
+    // Extract form fields
+    const caseId = formData.get("caseId") as string;
+    const type = formData.get("type") as string;
+    const description = formData.get("description") as string | null;
+    const collectedDate = formData.get("collectedDate") as string;
+    const collectedLocation = formData.get("collectedLocation") as string | null;
+    const storageLocation = formData.get("storageLocation") as string | null;
+    const tagsString = formData.get("tags") as string | null;
+    const tags = tagsString ? tagsString.split(",").map(t => t.trim()) : [];
+    const notes = formData.get("notes") as string | null;
+
+    // Handle file upload if present
+    const file = formData.get("file") as File | null;
+    let fileData: CreateEvidenceInput["file"] = undefined;
+
+    if (file) {
+      // Validate file
+      const { uploadFile, validateFileType } = await import("@/lib/s3");
+
+      if (!validateFileType(file.type)) {
+        return NextResponse.json(
+          { error: "Invalid file type. Please upload a supported file format." },
+          { status: 400 }
+        );
+      }
+
+      // Convert file to buffer
+      const buffer = Buffer.from(await file.arrayBuffer());
+
+      // Upload to S3
+      const uploadResult = await uploadFile(
+        buffer,
+        file.name,
+        file.type,
+        "evidence/"
+      );
+
+      fileData = {
+        url: uploadResult.url,
+        name: file.name,
+        size: uploadResult.size,
+        mimeType: file.type,
+        hash: uploadResult.hash,
+      };
+    }
 
     // Prepare input
-    const input: CreateEvidenceInput = body;
+    const input: CreateEvidenceInput = {
+      caseId,
+      type: type as any,
+      description: description || "",
+      collectedDate: collectedDate,
+      collectedLocation: collectedLocation || "",
+      storageLocation: storageLocation || undefined,
+      tags,
+      notes: notes || undefined,
+      file: fileData,
+    };
 
     // Create evidence
     const evidence = await container.evidenceService.createEvidence(

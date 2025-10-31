@@ -66,6 +66,7 @@ export class Evidence {
     public readonly collectedLocation: string,
     public readonly collectedBy: string, // Officer ID who collected
     public readonly fileUrl: string | null, // S3 URL for digital evidence
+    public readonly fileKey: string | null, // S3 key for file operations (delete, presigned URLs)
     public readonly fileName: string | null,
     public readonly fileSize: number | null, // In bytes
     public readonly fileMimeType: string | null,

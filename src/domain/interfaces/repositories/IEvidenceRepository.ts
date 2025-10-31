@@ -20,6 +20,7 @@ export interface CreateEvidenceDto {
   collectedLocation: string;
   collectedBy: string;
   fileUrl?: string | null;
+  fileKey?: string | null; // S3 key for file operations
   fileName?: string | null;
   fileSize?: number | null;
   fileMimeType?: string | null;

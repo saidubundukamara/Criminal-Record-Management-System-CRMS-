@@ -14,6 +14,9 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { CaseStatusBadge } from "@/components/cases/case-status-badge";
 import { CaseSeverityBadge } from "@/components/cases/case-severity-badge";
+import { CaseStatusChangeDialog } from "@/components/cases/case-status-change-dialog";
+import { AddPersonToCaseDialog } from "@/components/cases/add-person-to-case-dialog";
+import { CasePersonCards } from "@/components/cases/case-person-cards";
 import {
   ArrowLeft,
   Edit,
@@ -60,6 +63,34 @@ async function getCase(id: string) {
   }
 }
 
+async function getCasePersons(caseId: string) {
+  const session = await getServerSession(authOptions);
+
+  if (!session?.user) {
+    return [];
+  }
+
+  try {
+    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
+    const response = await fetch(`${baseUrl}/api/cases/${caseId}/persons`, {
+      cache: "no-store",
+      headers: {
+        Cookie: `next-auth.session-token=${session}`,
+      },
+    });
+
+    if (!response.ok) {
+      return [];
+    }
+
+    const data = await response.json();
+    return data.persons || [];
+  } catch (error) {
+    console.error("Error fetching case persons:", error);
+    return [];
+  }
+}
+
 function CaseDetailSkeleton() {
   return (
     <div className="space-y-6">
@@ -77,7 +108,10 @@ export default async function CaseDetailPage({ params }: PageProps) {
   }
 
   const { id } = await params;
-  const caseData = await getCase(id);
+  const [caseData, casePersons] = await Promise.all([
+    getCase(id),
+    getCasePersons(id),
+  ]);
 
   if (!caseData) {
     notFound();
@@ -183,20 +217,18 @@ export default async function CaseDetailPage({ params }: PageProps) {
               <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 Persons Involved
-                {caseData.personsCount > 0 && (
+                {casePersons.length > 0 && (
                   <span className="text-sm font-normal text-gray-500">
-                    ({caseData.personsCount})
+                    ({casePersons.length})
                   </span>
                 )}
               </h3>
-              <Button size="sm" variant="outline">
-                Add Person
-              </Button>
+              <AddPersonToCaseDialog
+                caseId={caseData.id}
+                caseNumber={caseData.caseNumber}
+              />
             </div>
-            <p className="text-sm text-gray-500">
-              No persons added yet. Add suspects, victims, or witnesses to this
-              case.
-            </p>
+            <CasePersonCards caseId={caseData.id} persons={casePersons} />
           </div>
 
           {/* Evidence */}
@@ -262,9 +294,11 @@ export default async function CaseDetailPage({ params }: PageProps) {
               Quick Actions
             </h3>
             <div className="space-y-2">
-              <Button variant="outline" className="w-full justify-start">
-                Change Status
-              </Button>
+              <CaseStatusChangeDialog
+                caseId={caseData.id}
+                currentStatus={caseData.status}
+                caseNumber={caseData.caseNumber}
+              />
               <Button variant="outline" className="w-full justify-start">
                 Assign Officer
               </Button>

@@ -151,12 +151,13 @@ export const mockEvidence: Evidence = new Evidence(
   new Date('2025-01-16T10:00:00Z'),
   'Crime Scene - Office 3B',
   'officer-123',
-  null,
-  null,
-  null,
-  null,
-  null,
-  'Evidence Room A, Shelf 3',
+  null, // fileUrl
+  null, // fileKey
+  null, // fileName
+  null, // fileSize
+  null, // fileMimeType
+  null, // fileHash
+  'Evidence Room A, Shelf 3', // storageLocation
   [
     {
       officerId: 'officer-123',

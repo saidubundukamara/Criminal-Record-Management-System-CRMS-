@@ -63,6 +63,7 @@ export interface ICaseRepository {
   findAll(filters?: CaseFilters): Promise<CaseWithRelations[]>;
   findByStationId(stationId: string, filters?: CaseFilters): Promise<Case[]>;
   findByOfficerId(officerId: string, filters?: CaseFilters): Promise<Case[]>;
+  findByPersonId(personId: string): Promise<Case[]>;
   count(filters?: CaseFilters): Promise<number>;
 
   // Commands

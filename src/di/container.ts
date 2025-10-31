@@ -23,6 +23,9 @@ import { ICaseRepository } from "@/src/domain/interfaces/repositories/ICaseRepos
 import { IPersonRepository } from "@/src/domain/interfaces/repositories/IPersonRepository";
 import { IEvidenceRepository } from "@/src/domain/interfaces/repositories/IEvidenceRepository";
 import { ISyncQueueRepository } from "@/src/domain/interfaces/repositories/ISyncQueueRepository";
+import { IBackgroundCheckRepository } from "@/src/domain/interfaces/repositories/IBackgroundCheckRepository";
+import { IAmberAlertRepository } from "@/src/domain/interfaces/repositories/IAmberAlertRepository";
+import { IWantedPersonRepository } from "@/src/domain/interfaces/repositories/IWantedPersonRepository";
 
 // Repository Implementations
 import { OfficerRepository } from "@/src/repositories/implementations/OfficerRepository";
@@ -34,6 +37,9 @@ import { CaseRepository } from "@/src/repositories/implementations/CaseRepositor
 import { PersonRepository } from "@/src/repositories/implementations/PersonRepository";
 import { EvidenceRepository } from "@/src/repositories/implementations/EvidenceRepository";
 import { SyncQueueRepository } from "@/src/repositories/implementations/SyncQueueRepository";
+import { BackgroundCheckRepository } from "@/src/repositories/implementations/BackgroundCheckRepository";
+import { AmberAlertRepository } from "@/src/repositories/implementations/AmberAlertRepository";
+import { WantedPersonRepository } from "@/src/repositories/implementations/WantedPersonRepository";
 
 // Services
 import { AuthService } from "@/src/services/AuthService";
@@ -42,6 +48,8 @@ import { CaseService } from "@/src/services/CaseService";
 import { PersonService } from "@/src/services/PersonService";
 import { EvidenceService } from "@/src/services/EvidenceService";
 import { SyncService } from "@/src/services/SyncService";
+import { BackgroundCheckService } from "@/src/services/BackgroundCheckService";
+import { AlertService } from "@/src/services/AlertService";
 
 /**
  * Application Dependency Injection Container
@@ -63,6 +71,9 @@ export class Container {
   public readonly personRepository: IPersonRepository;
   public readonly evidenceRepository: IEvidenceRepository;
   public readonly syncQueueRepository: ISyncQueueRepository;
+  public readonly backgroundCheckRepository: IBackgroundCheckRepository;
+  public readonly amberAlertRepository: IAmberAlertRepository;
+  public readonly wantedPersonRepository: IWantedPersonRepository;
 
   // Services
   public readonly authService: AuthService;
@@ -71,6 +82,8 @@ export class Container {
   public readonly personService: PersonService;
   public readonly evidenceService: EvidenceService;
   public readonly syncService: SyncService;
+  public readonly backgroundCheckService: BackgroundCheckService;
+  public readonly alertService: AlertService;
 
   private constructor() {
     // Initialize Prisma Client
@@ -86,6 +99,9 @@ export class Container {
     this.personRepository = new PersonRepository(this.prismaClient);
     this.evidenceRepository = new EvidenceRepository(this.prismaClient);
     this.syncQueueRepository = new SyncQueueRepository(this.prismaClient);
+    this.backgroundCheckRepository = new BackgroundCheckRepository(this.prismaClient);
+    this.amberAlertRepository = new AmberAlertRepository(this.prismaClient);
+    this.wantedPersonRepository = new WantedPersonRepository(this.prismaClient);
 
     // Initialize Services with injected dependencies
     this.authService = new AuthService(
@@ -112,6 +128,20 @@ export class Container {
 
     this.syncService = new SyncService(
       this.syncQueueRepository,
+      this.auditLogRepository
+    );
+
+    this.backgroundCheckService = new BackgroundCheckService(
+      this.backgroundCheckRepository,
+      this.personRepository,
+      this.caseRepository,
+      this.auditLogRepository
+    );
+
+    this.alertService = new AlertService(
+      this.amberAlertRepository,
+      this.wantedPersonRepository,
+      this.personRepository,
       this.auditLogRepository
     );
   }

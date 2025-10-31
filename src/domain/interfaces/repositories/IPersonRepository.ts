@@ -210,6 +210,16 @@ export interface IPersonRepository {
   markAsDeceasedOrMissing(id: string, updatedBy: string): Promise<Person>;
 
   /**
+   * Set wanted status for a person (used by AlertService)
+   * More flexible than markAsWanted - can set true or false
+   */
+  setWantedStatus(
+    id: string,
+    isWanted: boolean,
+    updatedBy: string
+  ): Promise<Person>;
+
+  /**
    * Update risk level
    */
   updateRiskLevel(

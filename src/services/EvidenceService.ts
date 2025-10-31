@@ -32,6 +32,7 @@ export interface CreateEvidenceInput {
   notes?: string;
   file?: {
     url: string;
+    key?: string; // S3 key for file operations
     name: string;
     size: number;
     mimeType: string;
@@ -231,6 +232,7 @@ export class EvidenceService {
       collectedLocation: input.collectedLocation,
       collectedBy,
       fileUrl: input.file?.url || null,
+      fileKey: input.file?.key || null,
       fileName: input.file?.name || null,
       fileSize: input.file?.size || null,
       fileMimeType: input.file?.mimeType || null,

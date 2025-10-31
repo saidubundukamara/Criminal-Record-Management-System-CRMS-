@@ -11,7 +11,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { EvidenceList } from "@/components/evidence/evidence-list";
-import { Plus, Package, Shield, HardDrive, AlertCircle } from "lucide-react";
+import { Plus, Package, Shield, HardDrive, AlertCircle, QrCode } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 async function getEvidence() {
@@ -78,6 +78,12 @@ export default async function EvidencePage() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Link href="/evidence/scan">
+            <Button variant="outline">
+              <QrCode className="mr-2 h-4 w-4" />
+              Scan QR Code
+            </Button>
+          </Link>
           <Link href="/evidence/new">
             <Button>
               <Plus className="mr-2 h-4 w-4" />

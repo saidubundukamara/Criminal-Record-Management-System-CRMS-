@@ -470,6 +470,28 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
       data: {
         isDeceasedOrMissing: true,
         isWanted: false, // Cannot be wanted if deceased/missing
+        wantedSince: null,
+        updatedBy,
+      } as any,
+    });
+
+    return this.toDomain(data);
+  }
+
+  /**
+   * Set wanted status for a person
+   * Used by AlertService when creating/capturing wanted persons
+   */
+  async setWantedStatus(
+    id: string,
+    isWanted: boolean,
+    updatedBy: string
+  ): Promise<Person> {
+    const data = await this.prisma.person.update({
+      where: { id },
+      data: {
+        isWanted,
+        wantedSince: isWanted ? new Date() : null,
         updatedBy,
       } as any,
     });
