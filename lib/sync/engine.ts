@@ -7,11 +7,13 @@
  * - Retry logic with exponential backoff
  * - Manual sync trigger
  * - Queue management (FIFO with priority)
- * - Conflict resolution (server wins for MVP)
+ * - Conflict detection and resolution (Phase 9 enhancement)
+ * - Background Sync API integration
  */
 
 import { db, SyncQueueItem, PendingCase, PendingPerson, PendingEvidence } from './indexeddb';
 import { v4 as uuid } from 'uuid';
+import { detectConflict, autoResolveConflict, type ConflictDetails } from './conflict-detector';
 
 // ==================== TYPES ====================
 
@@ -29,6 +31,8 @@ export interface SyncEventData {
   queueCount: number;
   lastSync?: Date;
   error?: string;
+  conflict?: ConflictDetails; // Phase 9: Conflict detected
+  conflictCount?: number; // Phase 9: Number of pending conflicts
 }
 
 // ==================== SYNC ENGINE CLASS ====================
@@ -45,6 +49,10 @@ export class SyncEngine {
   private readonly MAX_RETRIES = 5;
   private readonly SYNC_INTERVAL_MS = 30000; // 30 seconds
   private isSyncing = false; // Prevent concurrent syncs
+
+  // Phase 9: Conflict management
+  private pendingConflicts: Map<string, ConflictDetails> = new Map();
+  private conflictResolvers: Map<string, (conflict: ConflictDetails) => Promise<any>> = new Map();
 
   constructor() {
     if (typeof window !== 'undefined') {
@@ -150,10 +158,48 @@ export class SyncEngine {
   // ==================== SYNC OPERATIONS ====================
 
   /**
-   * Sync a single queue item
+   * Sync a single queue item (Phase 9: Enhanced with conflict detection)
    */
   async syncSingleItem(item: SyncQueueItem): Promise<boolean> {
     try {
+      // Phase 9: Check for conflicts before syncing (for update operations)
+      if (item.operation === 'update') {
+        const conflict = await this.detectConflictForItem(item);
+
+        if (conflict) {
+          console.log(`⚠️ Conflict detected for ${item.entityType}:${item.entityId}`);
+
+          // Try auto-resolution first
+          const autoResolved = autoResolveConflict(conflict);
+
+          if (autoResolved.resolved) {
+            console.log(`✅ Auto-resolved conflict using ${autoResolved.strategy} strategy`);
+            // Update payload with resolved data
+            item.payload = autoResolved.data;
+          } else {
+            // Cannot auto-resolve - add to pending conflicts
+            const conflictKey = `${item.entityType}:${item.entityId}`;
+            this.pendingConflicts.set(conflictKey, conflict);
+
+            // Emit event to trigger UI
+            await this.emitEvent();
+
+            // Wait for manual resolution
+            const resolvedData = await this.waitForConflictResolution(conflictKey, conflict);
+
+            if (resolvedData) {
+              console.log(`✅ Manually resolved conflict for ${conflictKey}`);
+              item.payload = resolvedData;
+              this.pendingConflicts.delete(conflictKey);
+            } else {
+              // Resolution cancelled or failed - keep in queue
+              console.log(`⏸️ Conflict resolution pending for ${conflictKey}`);
+              return false;
+            }
+          }
+        }
+      }
+
       // Make API request
       const response = await fetch('/api/sync', {
         method: 'POST',
@@ -178,6 +224,30 @@ export class SyncEngine {
         console.log(`✅ Synced ${item.entityType}:${item.entityId}`);
         this.emitEvent();
         return true;
+      } else if (response.status === 409) {
+        // 409 Conflict - server detected a conflict
+        const errorData = await response.json();
+        console.log(`⚠️ Server reported conflict for ${item.entityType}:${item.entityId}`);
+
+        // Trigger conflict resolution UI
+        const conflictKey = `${item.entityType}:${item.entityId}`;
+        const conflict = await this.detectConflictForItem(item);
+
+        if (conflict) {
+          this.pendingConflicts.set(conflictKey, conflict);
+          await this.emitEvent();
+
+          // Wait for resolution
+          const resolvedData = await this.waitForConflictResolution(conflictKey, conflict);
+
+          if (resolvedData) {
+            // Retry with resolved data
+            item.payload = resolvedData;
+            return await this.syncSingleItem(item);
+          }
+        }
+
+        return false;
       } else {
         // Server error - log and retry later
         const errorText = await response.text();
@@ -374,6 +444,113 @@ export class SyncEngine {
     return this.lastSync;
   }
 
+  // ==================== PHASE 9: CONFLICT MANAGEMENT ====================
+
+  /**
+   * Detect conflict for a sync queue item
+   */
+  private async detectConflictForItem(item: SyncQueueItem): Promise<ConflictDetails | null> {
+    try {
+      // Fetch current server data
+      const response = await fetch(`/api/${item.entityType}s/${item.entityId}`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        // If 404, entity doesn't exist on server (no conflict)
+        if (response.status === 404) {
+          return null;
+        }
+        console.error(`Failed to fetch server data: ${response.status}`);
+        return null;
+      }
+
+      const responseData = await response.json();
+      const serverData = responseData[item.entityType];
+
+      // Detect conflict
+      return detectConflict(
+        item.entityType as any,
+        item.entityId,
+        item.payload,
+        serverData
+      );
+    } catch (error) {
+      console.error('Error detecting conflict:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Wait for manual conflict resolution (returns resolved data or null if cancelled)
+   */
+  private async waitForConflictResolution(
+    conflictKey: string,
+    conflict: ConflictDetails,
+    timeoutMs: number = 300000 // 5 minutes default
+  ): Promise<any | null> {
+    return new Promise((resolve) => {
+      // Set up resolver
+      this.conflictResolvers.set(conflictKey, async (resolvedConflict: ConflictDetails) => {
+        return resolve(resolvedConflict);
+      });
+
+      // Timeout after 5 minutes
+      setTimeout(() => {
+        if (this.conflictResolvers.has(conflictKey)) {
+          this.conflictResolvers.delete(conflictKey);
+          console.log(`⏱️ Conflict resolution timeout for ${conflictKey}`);
+          resolve(null);
+        }
+      }, timeoutMs);
+    });
+  }
+
+  /**
+   * Resolve a conflict manually (called from UI)
+   */
+  async resolveConflict(
+    conflictKey: string,
+    resolvedData: any
+  ): Promise<void> {
+    const resolver = this.conflictResolvers.get(conflictKey);
+
+    if (resolver) {
+      await resolver(resolvedData);
+      this.conflictResolvers.delete(conflictKey);
+      this.pendingConflicts.delete(conflictKey);
+      await this.emitEvent();
+    } else {
+      console.warn(`No resolver found for conflict: ${conflictKey}`);
+    }
+  }
+
+  /**
+   * Get all pending conflicts
+   */
+  getPendingConflicts(): ConflictDetails[] {
+    return Array.from(this.pendingConflicts.values());
+  }
+
+  /**
+   * Get conflict count
+   */
+  getConflictCount(): number {
+    return this.pendingConflicts.size;
+  }
+
+  /**
+   * Cancel conflict resolution (keep in queue)
+   */
+  cancelConflictResolution(conflictKey: string): void {
+    this.conflictResolvers.delete(conflictKey);
+    this.pendingConflicts.delete(conflictKey);
+    this.emitEvent();
+  }
+
   // ==================== EVENT EMITTER ====================
 
   /**
@@ -389,14 +566,22 @@ export class SyncEngine {
   }
 
   /**
-   * Emit event to all listeners
+   * Emit event to all listeners (Phase 9: Enhanced with conflict info)
    */
   private async emitEvent(): Promise<void> {
     const queueCount = await this.getQueueCount();
+
+    // Phase 9: Include conflict information
+    const conflictCount = this.getConflictCount();
+    const conflicts = this.getPendingConflicts();
+    const latestConflict = conflicts.length > 0 ? conflicts[conflicts.length - 1] : undefined;
+
     const data: SyncEventData = {
       status: this.syncStatus,
       queueCount,
       lastSync: this.lastSync || undefined,
+      conflict: latestConflict,
+      conflictCount,
     };
 
     this.listeners.forEach(listener => listener(data));

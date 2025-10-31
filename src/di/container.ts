@@ -53,6 +53,9 @@ import { SyncService } from "@/src/services/SyncService";
 import { BackgroundCheckService } from "@/src/services/BackgroundCheckService";
 import { AlertService } from "@/src/services/AlertService";
 import { VehicleService } from "@/src/services/VehicleService";
+import { AnalyticsService } from "@/src/services/AnalyticsService";
+import { ReportService } from "@/src/services/ReportService";
+import { PerformanceService } from "@/src/services/PerformanceService";
 
 /**
  * Application Dependency Injection Container
@@ -89,6 +92,9 @@ export class Container {
   public readonly backgroundCheckService: BackgroundCheckService;
   public readonly alertService: AlertService;
   public readonly vehicleService: VehicleService;
+  public readonly analyticsService: AnalyticsService;
+  public readonly reportService: ReportService;
+  public readonly performanceService: PerformanceService;
 
   private constructor() {
     // Initialize Prisma Client
@@ -155,6 +161,26 @@ export class Container {
       this.vehicleRepository,
       this.auditLogRepository
     );
+
+    this.analyticsService = new AnalyticsService(
+      this.caseRepository,
+      this.personRepository,
+      this.evidenceRepository,
+      this.auditLogRepository,
+      this.backgroundCheckRepository,
+      this.amberAlertRepository,
+      this.vehicleRepository
+    );
+
+    this.reportService = new ReportService(
+      this.caseRepository,
+      this.personRepository,
+      this.evidenceRepository,
+      this.auditLogRepository
+    );
+
+    // Phase 9: Performance monitoring service
+    this.performanceService = new PerformanceService();
   }
 
   /**
