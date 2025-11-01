@@ -104,7 +104,7 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/evidence">
+          <Link href="/dashboard/evidence">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Evidence
@@ -112,7 +112,7 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
           </Link>
         </div>
         <div className="flex gap-2">
-          <Link href={`/evidence/${id}/edit`}>
+          <Link href={`/dashboard/evidence/${id}/edit`}>
             <Button variant="outline">
               <Edit className="mr-2 h-4 w-4" />
               Edit
@@ -132,7 +132,7 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
                   {evidenceData.qrCode}
                 </h1>
                 <Link
-                  href={`/cases/${evidenceData.caseId}`}
+                  href={`/dashboard/cases/${evidenceData.caseId}`}
                   className="text-sm text-blue-600 hover:underline mt-2 inline-block"
                 >
                   Case: {evidenceData.case.caseNumber} - {evidenceData.case.title}

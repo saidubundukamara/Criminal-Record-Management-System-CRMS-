@@ -79,7 +79,7 @@ export function QRCodeScanner() {
         description: `Redirecting to ${qrCode}`,
       });
 
-      router.push(`/evidence/${data.evidence[0].id}`);
+      router.push(`/dashboard/evidence/${data.evidence[0].id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to find evidence");
       toast({

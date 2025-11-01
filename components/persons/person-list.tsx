@@ -166,7 +166,7 @@ export function PersonList({ persons, showFilters = true }: PersonListProps) {
                 <TableRow key={person.id} className="hover:bg-gray-50">
                   <TableCell className="font-medium">
                     <Link
-                      href={`/persons/${person.id}`}
+                      href={`/dashboard/persons/${person.id}`}
                       className="text-blue-600 hover:text-blue-800 hover:underline"
                     >
                       <div className="flex items-center gap-2">
@@ -246,7 +246,7 @@ export function PersonList({ persons, showFilters = true }: PersonListProps) {
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Link href={`/persons/${person.id}`}>
+                    <Link href={`/dashboard/persons/${person.id}`}>
                       <Button variant="ghost" size="sm">
                         <Eye className="h-4 w-4 mr-1" />
                         View

@@ -76,13 +76,13 @@ export default async function EvidencePage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Link href="/evidence/scan">
+          <Link href="/dashboard/evidence/scan">
             <Button variant="outline">
               <QrCode className="mr-2 h-4 w-4" />
               Scan QR Code
             </Button>
           </Link>
-          <Link href="/evidence/new">
+          <Link href="/dashboard/evidence/new">
             <Button>
               <Plus className="mr-2 h-4 w-4" />
               New Evidence

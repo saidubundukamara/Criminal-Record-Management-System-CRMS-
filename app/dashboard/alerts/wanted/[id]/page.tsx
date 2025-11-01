@@ -364,7 +364,7 @@ export default async function WantedPersonDetailPage({
           )}
           <div>
             <p className="text-sm text-gray-600">Person Record</p>
-            <Link href={`/persons/${person?.id}`} className="text-sm text-blue-600 hover:underline mt-1 block">
+            <Link href={`/dashboard/persons/${person?.id}`} className="text-sm text-blue-600 hover:underline mt-1 block">
               View full person record →
             </Link>
           </div>

@@ -64,7 +64,7 @@ export default async function BackgroundChecksPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Link href="/background-checks/search">
+          <Link href="/dashboard/background-checks/search">
             <Button>
               <Search className="mr-2 h-4 w-4" />
               New Check
@@ -124,7 +124,7 @@ export default async function BackgroundChecksPage() {
                 Get started by performing a new NIN-based check.
               </p>
               <div className="mt-6">
-                <Link href="/background-checks/search">
+                <Link href="/dashboard/background-checks/search">
                   <Button>
                     <Search className="mr-2 h-4 w-4" />
                     Perform Check
@@ -136,7 +136,7 @@ export default async function BackgroundChecksPage() {
             checks.map((check: any) => (
               <Link
                 key={check.id}
-                href={`/background-checks/${check.id}`}
+                href={`/dashboard/background-checks/${check.id}`}
                 className="block p-4 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center justify-between">

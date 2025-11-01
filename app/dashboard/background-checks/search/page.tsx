@@ -53,7 +53,7 @@ export default function BackgroundCheckSearchPage() {
 
       // Redirect to detail page after 2 seconds
       setTimeout(() => {
-        router.push(`/background-checks/${data.backgroundCheck.id}`);
+        router.push(`/dashboard/background-checks/${data.backgroundCheck.id}`);
       }, 2000);
     } catch (err) {
       setError("An error occurred while performing the check");

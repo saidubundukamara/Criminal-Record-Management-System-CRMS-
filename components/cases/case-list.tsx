@@ -150,7 +150,7 @@ export function CaseList({ cases, showFilters = true }: CaseListProps) {
                 <TableRow key={caseItem.id} className="hover:bg-gray-50">
                   <TableCell className="font-medium">
                     <Link
-                      href={`/cases/${caseItem.id}`}
+                      href={`/dashboard/cases/${caseItem.id}`}
                       className="text-blue-600 hover:text-blue-800 hover:underline"
                     >
                       {caseItem.caseNumber}
@@ -195,7 +195,7 @@ export function CaseList({ cases, showFilters = true }: CaseListProps) {
                     )}
                   </TableCell>
                   <TableCell className="text-right">
-                    <Link href={`/cases/${caseItem.id}`}>
+                    <Link href={`/dashboard/cases/${caseItem.id}`}>
                       <Button variant="ghost" size="sm">
                         <Eye className="h-4 w-4 mr-1" />
                         View

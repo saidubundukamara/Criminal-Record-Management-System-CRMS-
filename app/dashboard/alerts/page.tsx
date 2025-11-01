@@ -116,7 +116,9 @@ async function getAlertsStatistics() {
         active: activeWantedPersons,
         recent: recentWantedPersons.map((wanted) => ({
           id: wanted.id,
-          name: `${wanted.person.firstName} ${wanted.person.lastName}`,
+          name: wanted.person
+            ? `${wanted.person.firstName} ${wanted.person.lastName}`
+            : 'Unknown',
           status: wanted.status,
           createdAt: wanted.createdAt.toISOString(),
         })),

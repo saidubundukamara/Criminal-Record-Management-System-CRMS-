@@ -168,7 +168,7 @@ export default async function CaseDetailPage({ params }: PageProps) {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/cases">
+          <Link href="/dashboard/cases">
             <Button variant="ghost" size="sm">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Cases
@@ -176,7 +176,7 @@ export default async function CaseDetailPage({ params }: PageProps) {
           </Link>
         </div>
         <div className="flex gap-2">
-          <Link href={`/cases/${id}/edit`}>
+          <Link href={`/dashboard/cases/${id}/edit`}>
             <Button variant="outline">
               <Edit className="mr-2 h-4 w-4" />
               Edit

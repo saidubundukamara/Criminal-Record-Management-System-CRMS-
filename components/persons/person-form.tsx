@@ -166,7 +166,7 @@ export function PersonForm({ initialData, personId, onSuccess }: PersonFormProps
       if (onSuccess) {
         onSuccess(result.person);
       } else {
-        router.push(`/persons/${result.person.id}`);
+        router.push(`/dashboard/persons/${result.person.id}`);
       }
     } catch (error) {
       console.error("Error saving person:", error);
