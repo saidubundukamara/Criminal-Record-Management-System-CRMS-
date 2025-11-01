@@ -103,7 +103,7 @@ export function CaseForm({ initialData, caseId, onSuccess }: CaseFormProps) {
       if (onSuccess) {
         onSuccess(result.case);
       } else {
-        router.push(`/cases/${result.case.id}`);
+        router.push(`/dashboard/cases/${result.case.id}`);
       }
     } catch (error) {
       console.error("Error saving case:", error);

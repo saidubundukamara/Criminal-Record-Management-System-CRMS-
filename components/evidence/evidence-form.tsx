@@ -161,7 +161,7 @@ export function EvidenceForm({
       if (onSuccess) {
         onSuccess(result.evidence);
       } else {
-        router.push(`/evidence/${result.evidence.id}`);
+        router.push(`/dashboard/evidence/${result.evidence.id}`);
       }
     } catch (error) {
       console.error("Error saving evidence:", error);

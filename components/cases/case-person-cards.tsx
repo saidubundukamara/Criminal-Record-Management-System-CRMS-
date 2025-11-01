@@ -164,7 +164,7 @@ export function CasePersonCards({ caseId, persons }: CasePersonCardsProps) {
                   <div className="flex items-start gap-3">
                     {/* Photo */}
                     <Link
-                      href={`/persons/${casePerson.person.id}`}
+                      href={`/dashboard/persons/${casePerson.person.id}`}
                       className="flex-shrink-0"
                     >
                       {casePerson.person.photoUrl ? (
@@ -185,7 +185,7 @@ export function CasePersonCards({ caseId, persons }: CasePersonCardsProps) {
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <Link
-                            href={`/persons/${casePerson.person.id}`}
+                            href={`/dashboard/persons/${casePerson.person.id}`}
                             className="font-semibold text-gray-900 hover:text-blue-600 hover:underline inline-flex items-center gap-1"
                           >
                             {casePerson.person.fullName}

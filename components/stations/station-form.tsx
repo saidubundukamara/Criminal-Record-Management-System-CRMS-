@@ -60,8 +60,8 @@ export function StationForm({
       region: station?.region || "",
       phone: station?.phone || "",
       email: station?.email || "",
-      latitude: station?.latitude,
-      longitude: station?.longitude,
+      latitude: station?.latitude ?? undefined,
+      longitude: station?.longitude ?? undefined,
     },
   });
 
@@ -249,6 +249,7 @@ export function StationForm({
                     <FormControl>
                       <Input
                         {...field}
+                        value={field.value ?? ""}
                         type="number"
                         step="any"
                         placeholder="e.g., 8.4657"
@@ -269,6 +270,7 @@ export function StationForm({
                     <FormControl>
                       <Input
                         {...field}
+                        value={field.value ?? ""}
                         type="number"
                         step="any"
                         placeholder="e.g., -13.2317"

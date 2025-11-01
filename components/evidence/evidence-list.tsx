@@ -170,7 +170,7 @@ export function EvidenceList({ evidence, showFilters = true }: EvidenceListProps
                 <TableRow key={item.id} className="hover:bg-gray-50">
                   <TableCell className="font-medium">
                     <Link
-                      href={`/evidence/${item.id}`}
+                      href={`/dashboard/evidence/${item.id}`}
                       className="text-blue-600 hover:text-blue-800 hover:underline flex items-center gap-1"
                     >
                       <QrCode className="h-4 w-4" />
@@ -253,7 +253,7 @@ export function EvidenceList({ evidence, showFilters = true }: EvidenceListProps
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <Link href={`/evidence/${item.id}`}>
+                    <Link href={`/dashboard/evidence/${item.id}`}>
                       <Button variant="ghost" size="sm">
                         <Eye className="h-4 w-4 mr-1" />
                         View

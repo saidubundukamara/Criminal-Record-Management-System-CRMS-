@@ -95,10 +95,10 @@ services:
 
       # NextAuth
       NEXTAUTH_URL: http://localhost:3000
-      NEXTAUTH_SECRET: your-nextauth-secret-change-in-production
+      NEXTAUTH_SECRET: pmBYWmyAa/YUkDzxd1jDKu0cgFLjYUgNy0NtVgmOtN0=
 
       # Encryption
-      ENCRYPTION_KEY: your-encryption-key-change-in-production
+      ENCRYPTION_KEY: c3ce422f35731ab98e76d743df2ddde8de82016bde0373d8c5cde60d3c73393f
 
       # Application
       NODE_ENV: production

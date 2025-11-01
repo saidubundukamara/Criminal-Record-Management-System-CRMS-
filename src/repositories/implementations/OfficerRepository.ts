@@ -193,6 +193,16 @@ export class OfficerRepository extends BaseRepository implements IOfficerReposit
     }, "updatePinHash");
   }
 
+  async getPinHash(id: string): Promise<string | null> {
+    return this.execute(async () => {
+      const officer = await this.prisma.officer.findUnique({
+        where: { id },
+        select: { pinHash: true },
+      });
+      return officer?.pinHash || null;
+    }, "getPinHash");
+  }
+
   /**
    * Build WHERE clause from filters
    */
