@@ -153,8 +153,8 @@ export class Vehicle {
    * Note: This is basic validation - implement country-specific regex as needed
    */
   static isValidLicensePlate(plate: string): boolean {
-    // Remove spaces and convert to uppercase
-    const normalized = plate.toUpperCase().replace(/\s+/g, "");
+    // Remove spaces, hyphens, and other delimiters, convert to uppercase
+    const normalized = plate.toUpperCase().replace(/[\s\-]+/g, "");
 
     // Basic validation: 3-12 alphanumeric characters
     // Countries can override with specific formats (e.g., ABC-1234, ABC 123, etc.)
@@ -165,10 +165,10 @@ export class Vehicle {
 
   /**
    * Normalize license plate for storage
-   * Removes spaces, converts to uppercase
+   * Removes spaces, hyphens, and other delimiters, converts to uppercase
    */
   static normalizeLicensePlate(plate: string): string {
-    return plate.toUpperCase().replace(/\s+/g, "");
+    return plate.toUpperCase().replace(/[\s\-]+/g, "");
   }
 
   /**
