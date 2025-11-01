@@ -164,6 +164,7 @@ const withPWA = withPWAInit({
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false, // Security: Hide X-Powered-By header
+  output: 'standalone', // Enable Docker deployment with standalone build
 
   // Turbopack config (empty to acknowledge webpack config from PWA plugin)
   turbopack: {},

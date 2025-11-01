@@ -51,13 +51,13 @@ export class AuthService {
     }
 
     // Verify PIN
-    // Need to get the pinHash from database (not exposed in domain entity)
-    const officerData = await this.officerRepo.findById(officer.id);
-    if (!officerData) {
+    // Get pinHash from database (not exposed in domain entity for security)
+    const pinHash = await this.officerRepo.getPinHash(officer.id);
+    if (!pinHash) {
       throw new UnauthorizedError("Officer not found");
     }
 
-    const isValidPin = await this.verifyPin(pin, officerData);
+    const isValidPin = await this.verifyPin(pin, pinHash);
     if (!isValidPin) {
       await this.handleFailedLogin(officer.id, badge, ipAddress, userAgent);
       throw new UnauthorizedError("Invalid credentials");
@@ -101,7 +101,11 @@ export class AuthService {
     }
 
     // Verify old PIN
-    const isValidOldPin = await this.verifyPin(oldPin, officer);
+    const pinHash = await this.officerRepo.getPinHash(officerId);
+    if (!pinHash) {
+      throw new UnauthorizedError("Officer not found");
+    }
+    const isValidOldPin = await this.verifyPin(oldPin, pinHash);
     if (!isValidOldPin) {
       await this.auditRepo.create({
         entityType: "officer",
@@ -196,11 +200,8 @@ export class AuthService {
    * Verify PIN against officer's stored hash
    * Uses Argon2id for secure password hashing
    */
-  private async verifyPin(pin: string, officer: any): Promise<boolean> {
+  private async verifyPin(pin: string, pinHash: string): Promise<boolean> {
     try {
-      // The pinHash is not exposed in the domain entity for security
-      // We need to get it from the raw data or cast
-      const pinHash = (officer as any).pinHash;
       if (!pinHash) {
         return false;
       }

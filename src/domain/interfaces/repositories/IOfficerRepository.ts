@@ -55,4 +55,5 @@ export interface IOfficerRepository {
   lockAccount(id: string, until: Date): Promise<void>;
   updateLastLogin(id: string): Promise<void>;
   updatePinHash(id: string, pinHash: string): Promise<void>;
+  getPinHash(id: string): Promise<string | null>;
 }
