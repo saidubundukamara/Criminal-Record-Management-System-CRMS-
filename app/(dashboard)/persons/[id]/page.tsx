@@ -36,6 +36,7 @@ import {
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { container } from "@/src/di/container";
 
 interface PageProps {
   params: Promise<{
@@ -51,20 +52,25 @@ async function getPerson(id: string) {
   }
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/persons/${id}`, {
-      cache: "no-store",
-      headers: {
-        Cookie: `next-auth.session-token=${session}`,
+    const prisma = container.prismaClient;
+    const person = await prisma.person.findUnique({
+      where: { id },
+      include: {
+        cases: {
+          include: {
+            case: {
+              select: {
+                id: true,
+                caseNumber: true,
+                title: true,
+              },
+            },
+          },
+        },
       },
     });
 
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    return data.person;
+    return person as any;
   } catch (error) {
     console.error("Error fetching person:", error);
     return null;

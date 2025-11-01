@@ -12,6 +12,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Search, FileSearch, Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { container } from "@/src/di/container";
 
 async function getBackgroundChecks() {
   const session = await getServerSession(authOptions);
@@ -21,21 +22,13 @@ async function getBackgroundChecks() {
   }
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/background-checks?limit=50`, {
-      cache: "no-store",
-      headers: {
-        Cookie: `next-auth.session-token=${session}`,
-      },
+    const prisma = container.prismaClient;
+    const checks = await prisma.backgroundCheck.findMany({
+      take: 50,
+      orderBy: { createdAt: 'desc' },
     });
 
-    if (!response.ok) {
-      console.error("Failed to fetch background checks");
-      return [];
-    }
-
-    const data = await response.json();
-    return data.checks || [];
+    return checks as any[];
   } catch (error) {
     console.error("Error fetching background checks:", error);
     return [];

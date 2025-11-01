@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Plus, AlertTriangle, CheckCircle, Clock, User } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { container } from "@/src/di/container";
 
 async function getAmberAlerts() {
   const session = await getServerSession(authOptions);
@@ -22,21 +23,13 @@ async function getAmberAlerts() {
   }
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/alerts/amber?limit=100`, {
-      cache: "no-store",
-      headers: {
-        Cookie: `next-auth.session-token=${session}`,
-      },
+    const prisma = container.prismaClient;
+    const alerts = await prisma.amberAlert.findMany({
+      take: 100,
+      orderBy: { createdAt: 'desc' },
     });
 
-    if (!response.ok) {
-      console.error("Failed to fetch amber alerts");
-      return [];
-    }
-
-    const data = await response.json();
-    return data.alerts || [];
+    return alerts as any[];
   } catch (error) {
     console.error("Error fetching amber alerts:", error);
     return [];

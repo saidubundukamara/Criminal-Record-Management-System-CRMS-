@@ -21,6 +21,7 @@ import {
   FileText,
   Globe,
 } from "lucide-react";
+import { container } from "@/src/di/container";
 
 async function getWantedPerson(id: string) {
   const session = await getServerSession(authOptions);
@@ -30,20 +31,24 @@ async function getWantedPerson(id: string) {
   }
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/alerts/wanted/${id}`, {
-      cache: "no-store",
-      headers: {
-        Cookie: `next-auth.session-token=${session}`,
+    const prisma = container.prismaClient;
+    const wanted = await prisma.wantedPerson.findUnique({
+      where: { id },
+      include: {
+        person: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            nationalId: true,
+            dob: true,
+            gender: true,
+          },
+        },
       },
     });
 
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    return data.alert;
+    return wanted as any;
   } catch (error) {
     console.error("Error fetching wanted person:", error);
     return null;

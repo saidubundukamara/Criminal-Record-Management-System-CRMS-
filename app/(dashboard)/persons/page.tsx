@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { PersonList } from "@/components/persons/person-list";
 import { Plus, Users, AlertOctagon, Fingerprint } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { container } from "@/src/di/container";
 
 async function getPersons() {
   const session = await getServerSession(authOptions);
@@ -22,21 +23,18 @@ async function getPersons() {
   }
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/persons?limit=500`, {
-      cache: "no-store",
-      headers: {
-        Cookie: `next-auth.session-token=${session}`,
+    const prisma = container.prismaClient;
+    const persons = await prisma.person.findMany({
+      take: 500,
+      orderBy: { createdAt: 'desc' },
+      where: {
+        createdBy: {
+          stationId: session.user.stationId,
+        },
       },
     });
 
-    if (!response.ok) {
-      console.error("Failed to fetch persons");
-      return [];
-    }
-
-    const data = await response.json();
-    return data.persons || [];
+    return persons as any[];
   } catch (error) {
     console.error("Error fetching persons:", error);
     return [];

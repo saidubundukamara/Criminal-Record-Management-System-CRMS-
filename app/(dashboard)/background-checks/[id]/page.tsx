@@ -11,6 +11,7 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { ArrowLeft, Download, FileText, AlertTriangle, CheckCircle, Clock } from "lucide-react";
+import { container } from "@/src/di/container";
 
 async function getBackgroundCheck(id: string) {
   const session = await getServerSession(authOptions);
@@ -20,20 +21,12 @@ async function getBackgroundCheck(id: string) {
   }
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/background-checks/${id}`, {
-      cache: "no-store",
-      headers: {
-        Cookie: `next-auth.session-token=${session}`,
-      },
+    const prisma = container.prismaClient;
+    const check = await prisma.backgroundCheck.findUnique({
+      where: { id },
     });
 
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    return data.backgroundCheck;
+    return check as any;
   } catch (error) {
     console.error("Error fetching background check:", error);
     return null;

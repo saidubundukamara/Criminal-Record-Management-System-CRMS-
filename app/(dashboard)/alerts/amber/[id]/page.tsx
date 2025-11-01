@@ -21,6 +21,7 @@ import {
   Calendar,
   Info,
 } from "lucide-react";
+import { container } from "@/src/di/container";
 
 async function getAmberAlert(id: string) {
   const session = await getServerSession(authOptions);
@@ -30,20 +31,12 @@ async function getAmberAlert(id: string) {
   }
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/alerts/amber/${id}`, {
-      cache: "no-store",
-      headers: {
-        Cookie: `next-auth.session-token=${session}`,
-      },
+    const prisma = container.prismaClient;
+    const alert = await prisma.amberAlert.findUnique({
+      where: { id },
     });
 
-    if (!response.ok) {
-      return null;
-    }
-
-    const data = await response.json();
-    return data.alert;
+    return alert as any;
   } catch (error) {
     console.error("Error fetching amber alert:", error);
     return null;

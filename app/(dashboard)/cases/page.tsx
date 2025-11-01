@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { CaseList } from "@/components/cases/case-list";
 import { Plus, FileText } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { container } from "@/src/di/container";
 
 async function getCases() {
   const session = await getServerSession(authOptions);
@@ -22,23 +23,38 @@ async function getCases() {
   }
 
   try {
-    // In a real app, this would be a server-side fetch from the database
-    // For now, we'll fetch from our API
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/cases`, {
-      cache: "no-store",
-      headers: {
-        Cookie: `next-auth.session-token=${session}`, // Pass session
+    // Fetch cases directly from database
+    const prisma = container.prismaClient;
+    const cases = await prisma.case.findMany({
+      where: {
+        stationId: session.user.stationId, // Filter by user's station
+      },
+      orderBy: {
+        createdAt: 'desc',
+      },
+      select: {
+        id: true,
+        caseNumber: true,
+        title: true,
+        description: true,
+        category: true,
+        severity: true,
+        status: true,
+        incidentDate: true,
+        location: true,
+        createdAt: true,
+        updatedAt: true,
       },
     });
 
-    if (!response.ok) {
-      console.error("Failed to fetch cases");
-      return [];
-    }
-
-    const data = await response.json();
-    return data.cases || [];
+    return cases.map(c => ({
+      ...c,
+      description: c.description ?? undefined,
+      location: c.location ?? undefined,
+      incidentDate: c.incidentDate.toISOString(),
+      createdAt: c.createdAt.toISOString(),
+      updatedAt: c.updatedAt.toISOString(),
+    }));
   } catch (error) {
     console.error("Error fetching cases:", error);
     return [];

@@ -71,10 +71,9 @@ export function StatisticsCharts({ statistics }: StatisticsChartsProps) {
     (sum, count) => sum + count,
     0
   );
-  const totalEvidenceByStatus = Object.values(evidence.byStatus).reduce(
-    (sum, count) => sum + count,
-    0
-  );
+  const totalEvidenceByStatus = evidence.byStatus
+    ? Object.values(evidence.byStatus).reduce((sum, count) => sum + count, 0)
+    : 0;
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -197,7 +196,7 @@ export function StatisticsCharts({ statistics }: StatisticsChartsProps) {
           Evidence by Status
         </h3>
         <div className="space-y-3">
-          {Object.entries(evidence.byStatus).map(([status, count]) => {
+          {evidence.byStatus && Object.entries(evidence.byStatus).map(([status, count]) => {
             const percentage = totalEvidenceByStatus
               ? Math.round((count / totalEvidenceByStatus) * 100)
               : 0;
@@ -222,7 +221,7 @@ export function StatisticsCharts({ statistics }: StatisticsChartsProps) {
               </div>
             );
           })}
-          {Object.keys(evidence.byStatus).length === 0 && (
+          {(!evidence.byStatus || Object.keys(evidence.byStatus).length === 0) && (
             <p className="text-sm text-gray-500 text-center py-4">
               No evidence data available
             </p>
@@ -231,15 +230,15 @@ export function StatisticsCharts({ statistics }: StatisticsChartsProps) {
         <div className="mt-4 pt-4 border-t">
           <div className="flex items-center justify-between py-1">
             <span className="text-xs text-gray-600">Sealed Evidence</span>
-            <Badge variant="secondary">{evidence.sealed}</Badge>
+            <Badge variant="secondary">{evidence.sealed || 0}</Badge>
           </div>
           <div className="flex items-center justify-between py-1">
             <span className="text-xs text-gray-600">Digital Evidence</span>
-            <Badge variant="secondary">{evidence.digital}</Badge>
+            <Badge variant="secondary">{evidence.digital || 0}</Badge>
           </div>
           <div className="flex items-center justify-between py-1">
             <span className="text-xs text-gray-600">In Court</span>
-            <Badge variant="secondary">{evidence.inCourt}</Badge>
+            <Badge variant="secondary">{evidence.inCourt || 0}</Badge>
           </div>
         </div>
       </Card>

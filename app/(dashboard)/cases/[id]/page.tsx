@@ -28,6 +28,7 @@ import {
   Users,
 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { container } from "@/src/di/container";
 
 interface PageProps {
   params: Promise<{
@@ -43,20 +44,37 @@ async function getCase(id: string) {
   }
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/cases/${id}`, {
-      cache: "no-store",
-      headers: {
-        Cookie: `next-auth.session-token=${session}`,
+    // Fetch case data directly from database
+    const prisma = container.prismaClient;
+    const caseData = await prisma.case.findUnique({
+      where: { id },
+      include: {
+        officer: {
+          select: {
+            id: true,
+            name: true,
+            badge: true,
+          },
+        },
+        _count: {
+          select: {
+            persons: true,
+            evidence: true,
+          },
+        },
       },
     });
 
-    if (!response.ok) {
+    if (!caseData) {
       return null;
     }
 
-    const data = await response.json();
-    return data.case;
+    // Transform to match expected structure
+    return {
+      ...caseData,
+      personCount: caseData._count.persons,
+      evidenceCount: caseData._count.evidence,
+    };
   } catch (error) {
     console.error("Error fetching case:", error);
     return null;
@@ -71,20 +89,48 @@ async function getCasePersons(caseId: string) {
   }
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/cases/${caseId}/persons`, {
-      cache: "no-store",
-      headers: {
-        Cookie: `next-auth.session-token=${session}`,
+    // Fetch case persons directly from database
+    const prisma = container.prismaClient;
+    const casePersons = await prisma.casePerson.findMany({
+      where: { caseId },
+      include: {
+        person: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            middleName: true,
+            nationalId: true,
+            dob: true,
+            gender: true,
+            nationality: true,
+            photoUrl: true,
+            riskLevel: true,
+            isWanted: true,
+          },
+        },
       },
     });
 
-    if (!response.ok) {
-      return [];
-    }
-
-    const data = await response.json();
-    return data.persons || [];
+    return casePersons.map((cp) => ({
+      linkId: cp.id,
+      personId: cp.person.id,
+      role: cp.role,
+      statement: cp.statement,
+      createdAt: cp.createdAt.toISOString(),
+      person: {
+        id: cp.person.id,
+        fullName: `${cp.person.firstName} ${cp.person.middleName ? cp.person.middleName + ' ' : ''}${cp.person.lastName}`,
+        firstName: cp.person.firstName,
+        lastName: cp.person.lastName,
+        nin: cp.person.nationalId,
+        dateOfBirth: cp.person.dob?.toISOString() || null,
+        gender: cp.person.gender || '',
+        photoUrl: cp.person.photoUrl,
+        riskLevel: cp.person.riskLevel as "low" | "medium" | "high" | null,
+        isWanted: cp.person.isWanted,
+      },
+    }));
   } catch (error) {
     console.error("Error fetching case persons:", error);
     return [];
@@ -296,7 +342,7 @@ export default async function CaseDetailPage({ params }: PageProps) {
             <div className="space-y-2">
               <CaseStatusChangeDialog
                 caseId={caseData.id}
-                currentStatus={caseData.status}
+                currentStatus={caseData.status as "open" | "investigating" | "charged" | "court" | "closed"}
                 caseNumber={caseData.caseNumber}
               />
               <Button variant="outline" className="w-full justify-start">

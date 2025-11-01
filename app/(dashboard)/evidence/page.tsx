@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { EvidenceList } from "@/components/evidence/evidence-list";
 import { Plus, Package, Shield, HardDrive, AlertCircle, QrCode } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { container } from "@/src/di/container";
 
 async function getEvidence() {
   const session = await getServerSession(authOptions);
@@ -22,21 +23,18 @@ async function getEvidence() {
   }
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/evidence?limit=500`, {
-      cache: "no-store",
-      headers: {
-        Cookie: `next-auth.session-token=${session}`,
+    const prisma = container.prismaClient;
+    const evidence = await prisma.evidence.findMany({
+      take: 500,
+      orderBy: { createdAt: 'desc' },
+      where: {
+        case: {
+          stationId: session.user.stationId,
+        },
       },
     });
 
-    if (!response.ok) {
-      console.error("Failed to fetch evidence");
-      return [];
-    }
-
-    const data = await response.json();
-    return data.evidence || [];
+    return evidence as any[];
   } catch (error) {
     console.error("Error fetching evidence:", error);
     return [];

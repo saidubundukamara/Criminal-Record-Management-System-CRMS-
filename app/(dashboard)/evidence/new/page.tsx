@@ -11,6 +11,7 @@ import { EvidenceForm } from "@/components/evidence/evidence-form";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { container } from "@/src/di/container";
 
 async function getCases() {
   const session = await getServerSession(authOptions);
@@ -20,20 +21,22 @@ async function getCases() {
   }
 
   try {
-    const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000";
-    const response = await fetch(`${baseUrl}/api/cases?limit=500`, {
-      cache: "no-store",
-      headers: {
-        Cookie: `next-auth.session-token=${session}`,
+    const prisma = container.prismaClient;
+    const cases = await prisma.case.findMany({
+      take: 500,
+      orderBy: { createdAt: 'desc' },
+      where: {
+        stationId: session.user.stationId,
+      },
+      select: {
+        id: true,
+        caseNumber: true,
+        title: true,
+        status: true,
       },
     });
 
-    if (!response.ok) {
-      return [];
-    }
-
-    const data = await response.json();
-    return data.cases || [];
+    return cases as any[];
   } catch (error) {
     console.error("Error fetching cases:", error);
     return [];
