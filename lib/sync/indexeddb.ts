@@ -111,6 +111,12 @@ class CRMSDatabase extends Dexie {
       syncQueue: 'id, entityType, entityId, operation, priority, createdAt',
     });
 
+    // Version 2: Add compound index for priority-based sync queue ordering
+    // Required for syncEngine.syncAll() which sorts by [priority+createdAt]
+    this.version(2).stores({
+      syncQueue: 'id, entityType, entityId, operation, priority, createdAt, [priority+createdAt]',
+    });
+
     // Add hooks for automatic timestamp updates
     this.cases.hook('creating', (primKey, obj) => {
       if (!obj.createdAt) obj.createdAt = new Date();
