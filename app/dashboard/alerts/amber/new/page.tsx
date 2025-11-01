@@ -106,7 +106,7 @@ export default function CreateAmberAlertPage() {
       setResult(data.alert);
 
       setTimeout(() => {
-        router.push(`/alerts/amber/${data.alert.id}`);
+        router.push(`/dashboard/alerts/amber/${data.alert.id}`);
       }, 2000);
     } catch (err) {
       setError("An error occurred while creating the alert");
@@ -120,7 +120,7 @@ export default function CreateAmberAlertPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href="/alerts/amber">
+        <Link href="/dashboard/alerts">
           <Button variant="outline" size="sm">
             <ArrowLeft className="h-4 w-4 mr-2" />
             Back

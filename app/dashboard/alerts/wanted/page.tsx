@@ -95,7 +95,7 @@ export default async function WantedPersonsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Link href="/alerts/wanted/new">
+          <Link href="/dashboard/alerts/wanted/new">
             <Button className="bg-red-600 hover:bg-red-700">
               <Plus className="mr-2 h-4 w-4" />
               New Alert
@@ -146,7 +146,7 @@ export default async function WantedPersonsPage() {
               .filter((w: any) => w.priority >= 80)
               .sort((a: any, b: any) => b.priority - a.priority)
               .map((wanted: any) => (
-                <Link key={wanted.id} href={`/alerts/wanted/${wanted.id}`}>
+                <Link key={wanted.id} href={`/dashboard/alerts/wanted/${wanted.id}`}>
                   <Card className="p-6 hover:shadow-lg transition-shadow border-l-4 border-red-600">
                     <div className="flex items-start gap-4">
                       <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0">
@@ -206,7 +206,7 @@ export default async function WantedPersonsPage() {
                 Get started by creating a new wanted person alert.
               </p>
               <div className="mt-6">
-                <Link href="/alerts/wanted/new">
+                <Link href="/dashboard/alerts/wanted/new">
                   <Button className="bg-red-600 hover:bg-red-700">
                     <Plus className="mr-2 h-4 w-4" />
                     New Alert
@@ -220,7 +220,7 @@ export default async function WantedPersonsPage() {
               .map((wanted: any) => (
                 <Link
                   key={wanted.id}
-                  href={`/alerts/wanted/${wanted.id}`}
+                  href={`/dashboard/alerts/wanted/${wanted.id}`}
                   className="block p-4 hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-center justify-between">

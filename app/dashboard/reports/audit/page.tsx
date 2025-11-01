@@ -11,7 +11,9 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { AuditLogFilters } from "@/components/audit/audit-log-filters";
 import { AuditLogList } from "@/components/audit/audit-log-list";
 import { AuditLogStats } from "@/components/audit/audit-log-stats";
@@ -19,7 +21,7 @@ import { AuditLogExportButton } from "@/components/audit/audit-log-export-button
 import { Pagination } from "@/components/ui/pagination";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Shield, AlertCircle } from "lucide-react";
+import { Shield, AlertCircle, ArrowLeft } from "lucide-react";
 
 interface AuditLog {
   id: string;
@@ -174,14 +176,22 @@ export default function AuditLogPage() {
     <div className="container mx-auto p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-2">
-            <Shield className="h-8 w-8" />
-            Audit Logs
-          </h1>
-          <p className="text-muted-foreground mt-1">
-            Comprehensive system audit trail for accountability
-          </p>
+        <div className="flex items-center gap-4">
+          <Link href="/dashboard/reports">
+            <Button variant="outline" size="sm">
+              <ArrowLeft className="h-4 w-4 mr-2" />
+              Back
+            </Button>
+          </Link>
+          <div>
+            <h1 className="text-3xl font-bold flex items-center gap-2">
+              <Shield className="h-8 w-8" />
+              Audit Logs
+            </h1>
+            <p className="text-muted-foreground mt-1">
+              Comprehensive system audit trail for accountability
+            </p>
+          </div>
         </div>
         <div className="flex gap-2">
           <button

@@ -22,6 +22,7 @@ import {
   Globe,
 } from "lucide-react";
 import { container } from "@/src/di/container";
+import { WantedCaptureDialog } from "@/components/alerts/wanted-capture-dialog";
 
 async function getWantedPerson(id: string) {
   const session = await getServerSession(authOptions);
@@ -93,7 +94,7 @@ function getStatusColor(status: string) {
 export default async function WantedPersonDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const session = await getServerSession(authOptions);
 
@@ -101,7 +102,8 @@ export default async function WantedPersonDetailPage({
     redirect("/login");
   }
 
-  const wanted = await getWantedPerson(params.id);
+  const { id } = await params;
+  const wanted = await getWantedPerson(id);
 
   if (!wanted) {
     notFound();
@@ -117,7 +119,7 @@ export default async function WantedPersonDetailPage({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/alerts/wanted">
+          <Link href="/dashboard/alerts">
             <Button variant="outline" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
@@ -130,14 +132,6 @@ export default async function WantedPersonDetailPage({
             </p>
           </div>
         </div>
-        {wanted.status === "active" && (
-          <form action={`/api/alerts/wanted/${wanted.id}/capture`} method="POST">
-            <Button className="bg-green-600 hover:bg-green-700">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Mark as Captured
-            </Button>
-          </form>
-        )}
       </div>
 
       {/* Status Banner */}
@@ -380,17 +374,17 @@ export default async function WantedPersonDetailPage({
       {/* Actions */}
       {wanted.status === "active" && (
         <div className="flex gap-3">
-          <Link href="/alerts/wanted" className="flex-1">
+          <Link href="/dashboard/alerts" className="flex-1">
             <Button variant="outline" className="w-full">
               View All Wanted Persons
             </Button>
           </Link>
-          <form action={`/api/alerts/wanted/${wanted.id}/capture`} method="POST" className="flex-1">
-            <Button className="w-full bg-green-600 hover:bg-green-700">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Mark as Captured
-            </Button>
-          </form>
+          <div className="flex-1">
+            <WantedCaptureDialog
+              wantedId={wanted.id}
+              personName={`${person?.firstName} ${person?.lastName}`}
+            />
+          </div>
         </div>
       )}
     </div>

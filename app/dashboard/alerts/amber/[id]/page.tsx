@@ -22,6 +22,7 @@ import {
   Info,
 } from "lucide-react";
 import { container } from "@/src/di/container";
+import { AmberResolveDialog } from "@/components/alerts/amber-resolve-dialog";
 
 async function getAmberAlert(id: string) {
   const session = await getServerSession(authOptions);
@@ -43,19 +44,6 @@ async function getAmberAlert(id: string) {
   }
 }
 
-function getUrgencyColor(urgency: string) {
-  switch (urgency) {
-    case "critical":
-      return "bg-red-100 text-red-800 border-red-200";
-    case "high":
-      return "bg-orange-100 text-orange-800 border-orange-200";
-    case "medium":
-      return "bg-yellow-100 text-yellow-800 border-yellow-200";
-    default:
-      return "bg-gray-100 text-gray-800 border-gray-200";
-  }
-}
-
 function getStatusColor(status: string) {
   switch (status) {
     case "active":
@@ -72,7 +60,7 @@ function getStatusColor(status: string) {
 export default async function AmberAlertDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
   const session = await getServerSession(authOptions);
 
@@ -80,7 +68,8 @@ export default async function AmberAlertDetailPage({
     redirect("/login");
   }
 
-  const alert = await getAmberAlert(params.id);
+  const { id } = await params;
+  const alert = await getAmberAlert(id);
 
   if (!alert) {
     notFound();
@@ -99,7 +88,7 @@ export default async function AmberAlertDetailPage({
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <Link href="/alerts/amber">
+          <Link href="/dashboard/alerts">
             <Button variant="outline" size="sm">
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back
@@ -110,14 +99,6 @@ export default async function AmberAlertDetailPage({
             <p className="text-gray-600 mt-1">{alert.personName}</p>
           </div>
         </div>
-        {alert.status === "active" && (
-          <form action={`/api/alerts/amber/${alert.id}/resolve`} method="POST">
-            <Button className="bg-green-600 hover:bg-green-700">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Mark as Found
-            </Button>
-          </form>
-        )}
       </div>
 
       {/* Status Banner */}
@@ -178,9 +159,6 @@ export default async function AmberAlertDetailPage({
               <div className="flex items-center gap-2 mt-2">
                 <span className={`px-3 py-1 text-sm rounded-full font-medium ${getStatusColor(alert.status)}`}>
                   {alert.status.toUpperCase()}
-                </span>
-                <span className={`px-3 py-1 text-sm rounded-full font-medium border ${getUrgencyColor(alert.urgency)}`}>
-                  {alert.urgency.toUpperCase()} URGENCY
                 </span>
               </div>
             </div>
@@ -322,17 +300,14 @@ export default async function AmberAlertDetailPage({
       {/* Actions */}
       {alert.status === "active" && (
         <div className="flex gap-3">
-          <Link href={`/alerts/amber`} className="flex-1">
+          <Link href={`/dashboard/alerts`} className="flex-1">
             <Button variant="outline" className="w-full">
               View All Alerts
             </Button>
           </Link>
-          <form action={`/api/alerts/amber/${alert.id}/resolve`} method="POST" className="flex-1">
-            <Button className="w-full bg-green-600 hover:bg-green-700">
-              <CheckCircle className="h-4 w-4 mr-2" />
-              Mark as Found
-            </Button>
-          </form>
+          <div className="flex-1">
+            <AmberResolveDialog alertId={alert.id} personName={alert.personName} />
+          </div>
         </div>
       )}
     </div>

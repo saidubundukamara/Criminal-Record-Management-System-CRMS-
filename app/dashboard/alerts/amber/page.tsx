@@ -58,7 +58,7 @@ export default async function AmberAlertsPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Link href="/alerts/amber/new">
+          <Link href="/dashboard/alerts/amber/new">
             <Button className="bg-red-600 hover:bg-red-700">
               <Plus className="mr-2 h-4 w-4" />
               New Alert
@@ -104,7 +104,7 @@ export default async function AmberAlertsPage() {
           <h2 className="text-xl font-semibold text-gray-900 mb-4">Active Alerts</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {activeAlerts.map((alert: any) => (
-              <Link key={alert.id} href={`/alerts/amber/${alert.id}`}>
+              <Link key={alert.id} href={`/dashboard/alerts/amber/${alert.id}`}>
                 <Card className="p-6 hover:shadow-lg transition-shadow border-l-4 border-red-500">
                   <div className="flex items-start gap-4">
                     {alert.photoUrl ? (
@@ -171,7 +171,7 @@ export default async function AmberAlertsPage() {
                 Get started by creating a new amber alert for a missing child.
               </p>
               <div className="mt-6">
-                <Link href="/alerts/amber/new">
+                <Link href="/dashboard/alerts/amber/new">
                   <Button className="bg-red-600 hover:bg-red-700">
                     <Plus className="mr-2 h-4 w-4" />
                     New Alert
@@ -183,7 +183,7 @@ export default async function AmberAlertsPage() {
             alerts.map((alert: any) => (
               <Link
                 key={alert.id}
-                href={`/alerts/amber/${alert.id}`}
+                href={`/dashboard/alerts/amber/${alert.id}`}
                 className="block p-4 hover:bg-gray-50 transition-colors"
               >
                 <div className="flex items-center justify-between">
