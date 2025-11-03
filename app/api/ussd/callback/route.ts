@@ -25,10 +25,7 @@ import {
   parseUSSDInput,
   getMenuLevel,
 } from "@/lib/ussd-session";
-import {
-  authenticateQuickPin,
-  isValidQuickPin,
-} from "@/lib/ussd-auth";
+import { authenticateQuickPin, isValidQuickPin } from "@/lib/ussd-auth";
 import {
   checkRateLimit,
   logQuery,
@@ -242,7 +239,8 @@ async function handleWantedCheck(
   if (!/^\d{11}$/.test(nin)) {
     await logQuery({
       officerId,
-      phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+      phoneNumber:
+        (await sessionManager.getSession(sessionId))?.phoneNumber || "",
       queryType: "wanted",
       searchTerm: nin,
       resultSummary: "INVALID_NIN",
@@ -260,7 +258,8 @@ async function handleWantedCheck(
     if (!person) {
       await logQuery({
         officerId,
-        phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+        phoneNumber:
+          (await sessionManager.getSession(sessionId))?.phoneNumber || "",
         queryType: "wanted",
         searchTerm: nin,
         resultSummary: "NOT_FOUND",
@@ -274,7 +273,8 @@ async function handleWantedCheck(
     if (!person.isWanted) {
       await logQuery({
         officerId,
-        phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+        phoneNumber:
+          (await sessionManager.getSession(sessionId))?.phoneNumber || "",
         queryType: "wanted",
         searchTerm: nin,
         resultSummary: "NOT_WANTED",
@@ -285,14 +285,17 @@ async function handleWantedCheck(
     }
 
     // Get wanted person details from repository
-    const wantedPersons = await container.wantedPersonRepository.findByPersonId(person.id);
-    const wantedPerson = wantedPersons.find(wp => wp.status === 'active');
+    const wantedPersons = await container.wantedPersonRepository.findByPersonId(
+      person.id
+    );
+    const wantedPerson = wantedPersons.find((wp) => wp.status === "active");
 
     if (!wantedPerson) {
       // Person flagged as wanted but no wanted record (data inconsistency)
       await logQuery({
         officerId,
-        phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+        phoneNumber:
+          (await sessionManager.getSession(sessionId))?.phoneNumber || "",
         queryType: "wanted",
         searchTerm: nin,
         resultSummary: "NOT_WANTED",
@@ -305,7 +308,8 @@ async function handleWantedCheck(
     // Log successful query
     await logQuery({
       officerId,
-      phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+      phoneNumber:
+        (await sessionManager.getSession(sessionId))?.phoneNumber || "",
       queryType: "wanted",
       searchTerm: nin,
       resultSummary: "WANTED",
@@ -314,11 +318,12 @@ async function handleWantedCheck(
     });
 
     // Format charges (extract charge text from CriminalCharge objects)
-    const chargeTexts = wantedPerson.charges.slice(0, 2).map(c => c.charge);
+    const chargeTexts = wantedPerson.charges.slice(0, 2).map((c) => c.charge);
     const chargesDisplay = chargeTexts.join(", ");
-    const chargesText = wantedPerson.charges.length > 2
-      ? `${chargesDisplay}, +${wantedPerson.charges.length - 2} more`
-      : chargesDisplay;
+    const chargesText =
+      wantedPerson.charges.length > 2
+        ? `${chargesDisplay}, +${wantedPerson.charges.length - 2} more`
+        : chargesDisplay;
 
     // Return USSD-formatted response
     return `END ${person.getFullName()}
@@ -331,7 +336,8 @@ DETAIN & CALL STATION`;
     console.error("[Wanted Check Error]", error);
     await logQuery({
       officerId,
-      phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+      phoneNumber:
+        (await sessionManager.getSession(sessionId))?.phoneNumber || "",
       queryType: "wanted",
       searchTerm: nin,
       resultSummary: "ERROR",
@@ -356,7 +362,8 @@ async function handleMissingCheck(
   if (!/^\d{11}$/.test(nin)) {
     await logQuery({
       officerId,
-      phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+      phoneNumber:
+        (await sessionManager.getSession(sessionId))?.phoneNumber || "",
       queryType: "missing",
       searchTerm: nin,
       resultSummary: "INVALID_NIN",
@@ -374,7 +381,8 @@ async function handleMissingCheck(
     if (!person) {
       await logQuery({
         officerId,
-        phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+        phoneNumber:
+          (await sessionManager.getSession(sessionId))?.phoneNumber || "",
         queryType: "missing",
         searchTerm: nin,
         resultSummary: "NOT_FOUND",
@@ -389,14 +397,13 @@ async function handleMissingCheck(
 
     // Find alert for this person (by name matching since amber alerts may not have personId)
     const personName = person.getFullName().toLowerCase();
-    const alert = alerts.find(
-      (a) => a.personName.toLowerCase() === personName
-    );
+    const alert = alerts.find((a) => a.personName.toLowerCase() === personName);
 
     if (!alert) {
       await logQuery({
         officerId,
-        phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+        phoneNumber:
+          (await sessionManager.getSession(sessionId))?.phoneNumber || "",
         queryType: "missing",
         searchTerm: nin,
         resultSummary: "NOT_MISSING",
@@ -409,7 +416,8 @@ async function handleMissingCheck(
     // Log successful query
     await logQuery({
       officerId,
-      phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+      phoneNumber:
+        (await sessionManager.getSession(sessionId))?.phoneNumber || "",
       queryType: "missing",
       searchTerm: nin,
       resultSummary: "MISSING",
@@ -436,7 +444,8 @@ CALL STATION IMMEDIATELY`;
     console.error("[Missing Check Error]", error);
     await logQuery({
       officerId,
-      phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+      phoneNumber:
+        (await sessionManager.getSession(sessionId))?.phoneNumber || "",
       queryType: "missing",
       searchTerm: nin,
       resultSummary: "ERROR",
@@ -461,7 +470,8 @@ async function handleBackgroundCheck(
   if (!/^\d{11}$/.test(nin)) {
     await logQuery({
       officerId,
-      phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+      phoneNumber:
+        (await sessionManager.getSession(sessionId))?.phoneNumber || "",
       queryType: "background",
       searchTerm: nin,
       resultSummary: "INVALID_NIN",
@@ -474,16 +484,19 @@ async function handleBackgroundCheck(
 
   try {
     // Perform background check (officer request type = full details)
-    const check = await container.backgroundCheckService.performBackgroundCheck({
-      nin,
-      requestType: "officer",
-      requestedById: officerId,
-    });
+    const check = await container.backgroundCheckService.performBackgroundCheck(
+      {
+        nin,
+        requestType: "officer",
+        requestedById: officerId,
+      }
+    );
 
     // Log query
     await logQuery({
       officerId,
-      phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+      phoneNumber:
+        (await sessionManager.getSession(sessionId))?.phoneNumber || "",
       queryType: "background",
       searchTerm: nin,
       resultSummary: check.result.status.toUpperCase(),
@@ -518,7 +531,8 @@ Use web app for full details`;
     console.error("[Background Check Error]", error);
     await logQuery({
       officerId,
-      phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+      phoneNumber:
+        (await sessionManager.getSession(sessionId))?.phoneNumber || "",
       queryType: "background",
       searchTerm: nin,
       resultSummary: "ERROR",
@@ -544,7 +558,8 @@ async function handleVehicleCheck(
   if (!/^[A-Z0-9]{3,12}$/.test(normalized)) {
     await logQuery({
       officerId,
-      phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+      phoneNumber:
+        (await sessionManager.getSession(sessionId))?.phoneNumber || "",
       queryType: "vehicle",
       searchTerm: licensePlate,
       resultSummary: "INVALID_PLATE",
@@ -565,7 +580,8 @@ async function handleVehicleCheck(
     if (!vehicle) {
       await logQuery({
         officerId,
-        phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+        phoneNumber:
+          (await sessionManager.getSession(sessionId))?.phoneNumber || "",
         queryType: "vehicle",
         searchTerm: licensePlate,
         resultSummary: "NOT_FOUND",
@@ -578,7 +594,8 @@ async function handleVehicleCheck(
     // Log query
     await logQuery({
       officerId,
-      phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+      phoneNumber:
+        (await sessionManager.getSession(sessionId))?.phoneNumber || "",
       queryType: "vehicle",
       searchTerm: licensePlate,
       resultSummary: vehicle.status.toUpperCase(),
@@ -592,7 +609,8 @@ async function handleVehicleCheck(
     console.error("[Vehicle Check Error]", error);
     await logQuery({
       officerId,
-      phoneNumber: (await sessionManager.getSession(sessionId))?.phoneNumber || "",
+      phoneNumber:
+        (await sessionManager.getSession(sessionId))?.phoneNumber || "",
       queryType: "vehicle",
       searchTerm: licensePlate,
       resultSummary: "ERROR",

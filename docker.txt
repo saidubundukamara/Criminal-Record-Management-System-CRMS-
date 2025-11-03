@@ -1,0 +1,12 @@
+dev build
+docker compose -f docker-compose.dev.yml up --build
+
+# Stop only the app container
+docker stop crms-app
+
+# Then start the dev app
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up app --build
+
+pro
+docker compose up --build -d
+
