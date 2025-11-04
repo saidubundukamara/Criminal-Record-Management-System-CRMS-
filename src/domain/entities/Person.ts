@@ -5,7 +5,7 @@
  * Includes business logic for PII handling, validation, and identity verification
  *
  * Pan-African Design:
- * - NIN field is configurable per country (Sierra Leone NIN, Ghana Card, Nigerian NIN, etc.)
+ * - National ID field is configurable per country (Sierra Leone NIN, Ghana Card, Nigerian NIN, etc.)
  * - Supports multiple aliases for tracking known names
  * - Encrypted PII for privacy compliance (GDPR, Malabo Convention)
  * - Biometric support for fingerprint identification
@@ -46,11 +46,11 @@ export interface EncryptedContact {
 export class Person {
   constructor(
     public readonly id: string,
-    public readonly nin: string | null, // National Identification Number (configurable per country)
+    public readonly nationalId: string | null, // National Identification Number (configurable per country)
     public readonly firstName: string,
     public readonly lastName: string,
     public readonly middleName: string | null,
-    public readonly alias: string[], // Array of known aliases
+    public readonly aliases: string[], // Array of known aliases
     public readonly dateOfBirth: Date | null,
     public readonly gender: Gender,
     public readonly nationality: string | null,
@@ -95,8 +95,8 @@ export class Person {
    */
   getDisplayName(): string {
     const fullName = this.getFullName();
-    if (this.alias.length > 0) {
-      return `${fullName} (aka ${this.alias.join(", ")})`;
+    if (this.aliases.length > 0) {
+      return `${fullName} (aka ${this.aliases.join(", ")})`;
     }
     return fullName;
   }
@@ -154,7 +154,7 @@ export class Person {
    */
   hasCompleteIdentification(): boolean {
     return (
-      this.nin !== null &&
+      this.nationalId !== null &&
       this.dateOfBirth !== null &&
       this.nationality !== null &&
       this.addresses.length > 0
@@ -239,8 +239,8 @@ export class Person {
       this.firstName,
       this.middleName || "",
       this.lastName,
-      ...this.alias,
-      this.nin || "",
+      ...this.aliases,
+      this.nationalId || "",
       this.nationality || "",
       this.occupation || "",
       this.tribe || "",
@@ -255,7 +255,7 @@ export class Person {
    */
   getDataCompletenessPercentage(): number {
     const fields = [
-      this.nin,
+      this.nationalId,
       this.firstName,
       this.lastName,
       this.dateOfBirth,
@@ -274,23 +274,23 @@ export class Person {
   }
 
   /**
-   * Validate NIN format (country-specific, override per deployment)
+   * Validate National ID format (country-specific, override per deployment)
    * Default: alphanumeric, 8-20 characters
    */
-  static isValidNIN(nin: string, countryCode?: string): boolean {
+  static isValidNationalId(nationalId: string, countryCode?: string): boolean {
     // Base validation
-    if (!nin || nin.length < 8 || nin.length > 20) {
+    if (!nationalId || nationalId.length < 8 || nationalId.length > 20) {
       return false;
     }
 
     // Country-specific validation can be added here
     // Example for Sierra Leone: NIN format is typically 11 digits
     if (countryCode === "SLE") {
-      return /^\d{11}$/.test(nin);
+      return /^\d{11}$/.test(nationalId);
     }
 
     // Default: alphanumeric
-    return /^[A-Z0-9]+$/i.test(nin);
+    return /^[A-Z0-9]+$/i.test(nationalId);
   }
 
   /**
@@ -304,7 +304,7 @@ export class Person {
     if (!this.hasCompleteIdentification()) {
       return {
         allowed: false,
-        reason: "Person must have complete identification (NIN, DOB, nationality, address)",
+        reason: "Person must have complete identification (National ID, DOB, nationality, address)",
       };
     }
 

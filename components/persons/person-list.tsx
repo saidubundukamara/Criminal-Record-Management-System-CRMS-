@@ -33,12 +33,12 @@ import { Badge } from "@/components/ui/badge";
 
 interface Person {
   id: string;
-  nin: string | null;
+  nationalId: string | null;
   firstName: string;
   lastName: string;
   middleName: string | null;
   fullName: string;
-  alias: string[];
+  aliases: string[];
   dateOfBirth: Date | null;
   age: number | null;
   gender: string;
@@ -66,8 +66,8 @@ export function PersonList({ persons, showFilters = true }: PersonListProps) {
   const filteredPersons = persons.filter((p) => {
     const matchesSearch =
       p.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (p.nin && p.nin.toLowerCase().includes(searchQuery.toLowerCase())) ||
-      p.alias.some((a) => a.toLowerCase().includes(searchQuery.toLowerCase()));
+      (p.nationalId && p.nationalId.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (p.aliases.length > 0 && p.aliases.some((a) => a.toLowerCase().includes(searchQuery.toLowerCase())));
 
     const matchesGender = genderFilter === "all" || p.gender === genderFilter;
 
@@ -183,9 +183,9 @@ export function PersonList({ persons, showFilters = true }: PersonListProps) {
                         )}
                         <div>
                           <p className="font-semibold">{person.fullName}</p>
-                          {person.alias.length > 0 && (
+                          {person.aliases.length > 0 && (
                             <p className="text-xs text-gray-500">
-                              aka {person.alias.join(", ")}
+                              aka {person.aliases.join(", ")}
                             </p>
                           )}
                         </div>
@@ -194,7 +194,7 @@ export function PersonList({ persons, showFilters = true }: PersonListProps) {
                   </TableCell>
                   <TableCell>
                     <span className="text-sm font-mono">
-                      {person.nin || (
+                      {person.nationalId || (
                         <span className="text-gray-400">Not recorded</span>
                       )}
                     </span>
