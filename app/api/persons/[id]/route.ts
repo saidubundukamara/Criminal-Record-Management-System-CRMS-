@@ -49,13 +49,13 @@ export async function GET(request: NextRequest, context: RouteContext) {
       {
         person: {
           id: person.id,
-          nin: person.nin,
+          nationalId: person.nationalId,
           firstName: person.firstName,
           lastName: person.lastName,
           middleName: person.middleName,
           fullName: person.getFullName(),
           displayName: person.getDisplayName(),
-          alias: person.alias,
+          aliases: person.aliases,
           dateOfBirth: person.dateOfBirth,
           age: person.getAge(),
           ageCategory: person.getAgeCategory(),
@@ -136,8 +136,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     const { id } = await context.params;
     const body = await request.json();
 
-    // Prepare input
-    const input: UpdatePersonInput = body;
+    // Prepare input - map nin -> nationalId and alias -> aliases for backward compatibility
+    const input: UpdatePersonInput = {
+      ...body,
+      nationalId: body.nin || body.nationalId,
+      aliases: body.alias || body.aliases,
+    };
 
     // Update person
     const person = await container.personService.updatePerson(
@@ -151,12 +155,12 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       {
         person: {
           id: person.id,
-          nin: person.nin,
+          nationalId: person.nationalId,
           firstName: person.firstName,
           lastName: person.lastName,
           middleName: person.middleName,
           fullName: person.getFullName(),
-          alias: person.alias,
+          aliases: person.aliases,
           dateOfBirth: person.dateOfBirth,
           age: person.getAge(),
           gender: person.gender,

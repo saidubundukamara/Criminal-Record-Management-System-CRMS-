@@ -147,9 +147,9 @@ export default async function PersonDetailPage({ params }: PageProps) {
                 <h1 className="text-3xl font-bold text-gray-900">
                   {personData.displayName}
                 </h1>
-                {personData.nin && (
+                {personData.nationalId && (
                   <p className="text-sm text-gray-500 mt-1 font-mono">
-                    NIN: {personData.nin}
+                    NIN: {personData.nationalId}
                   </p>
                 )}
               </div>
@@ -294,7 +294,7 @@ export default async function PersonDetailPage({ params }: PageProps) {
                   </dd>
                 </div>
               )}
-              {personData.languagesSpoken.length > 0 && (
+              {personData.languagesSpoken?.length > 0 && (
                 <div className="md:col-span-2">
                   <dt className="text-gray-500 flex items-center gap-1">
                     <Languages className="h-4 w-4" />

@@ -34,7 +34,7 @@ export async function GET(request: NextRequest) {
     // Parse query parameters
     const searchParams = request.nextUrl.searchParams;
     const search = searchParams.get("search") || undefined;
-    const nin = searchParams.get("nin") || undefined;
+    const nationalId = searchParams.get("nationalId") || undefined;
     const gender = searchParams.get("gender") || undefined;
     const nationality = searchParams.get("nationality") || undefined;
     const riskLevel = searchParams.get("riskLevel") || undefined;
@@ -46,7 +46,7 @@ export async function GET(request: NextRequest) {
     // Build filters
     const filters: PersonFilters = {
       search,
-      nin,
+      nationalId,
       gender: gender as any,
       nationality,
       riskLevel: riskLevel as any,
@@ -67,12 +67,12 @@ export async function GET(request: NextRequest) {
       {
         persons: persons.map((p) => ({
           id: p.id,
-          nin: p.nin,
+          nationalId: p.nationalId,
           firstName: p.firstName,
           lastName: p.lastName,
           middleName: p.middleName,
           fullName: p.getFullName(),
-          alias: p.alias,
+          aliases: p.aliases,
           dateOfBirth: p.dateOfBirth,
           age: p.getAge(),
           gender: p.gender,
@@ -128,9 +128,11 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
 
-    // Prepare input
+    // Prepare input - map nin -> nationalId and alias -> aliases for backward compatibility
     const input: CreatePersonInput = {
       ...body,
+      nationalId: body.nin || body.nationalId,
+      aliases: body.alias || body.aliases,
       stationId: session.user.stationId, // Use user's station
     };
 
@@ -145,12 +147,12 @@ export async function POST(request: NextRequest) {
       {
         person: {
           id: person.id,
-          nin: person.nin,
+          nationalId: person.nationalId,
           firstName: person.firstName,
           lastName: person.lastName,
           middleName: person.middleName,
           fullName: person.getFullName(),
-          alias: person.alias,
+          aliases: person.aliases,
           dateOfBirth: person.dateOfBirth,
           age: person.getAge(),
           gender: person.gender,

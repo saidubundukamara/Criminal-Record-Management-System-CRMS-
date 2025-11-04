@@ -67,7 +67,7 @@ export default async function EditPersonPage({ params }: PageProps) {
 
   // Transform data to match form expectations
   const initialData = {
-    nin: person.nationalId || "",
+    nationalId: person.nationalId || "",
     firstName: person.firstName,
     lastName: person.lastName,
     middleName: person.middleName || "",
@@ -86,7 +86,7 @@ export default async function EditPersonPage({ params }: PageProps) {
     riskLevel: person.riskLevel as "low" | "medium" | "high" | undefined,
     criminalHistory: "",
     notes: "",
-    alias: person.aliases || [],
+    aliases: person.aliases || [],
   };
 
   return (

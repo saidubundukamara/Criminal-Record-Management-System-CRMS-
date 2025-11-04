@@ -45,7 +45,7 @@ import { PersonWantedBadge } from "@/components/persons/person-wanted-badge";
 interface Person {
   id: string;
   fullName: string;
-  nin: string | null;
+  nationalId: string | null;
   photoUrl: string | null;
   gender: string;
   riskLevel: "low" | "medium" | "high" | null;
@@ -270,7 +270,7 @@ export function AddPersonToCaseDialog({
                             {person.fullName}
                           </p>
                           <p className="text-sm text-gray-500 font-mono">
-                            {person.nin || "No NIN"} • {person.gender}
+                            {person.nationalId || "No NIN"} • {person.gender}
                           </p>
                         </div>
                         <div className="flex flex-col gap-1">
@@ -326,7 +326,7 @@ export function AddPersonToCaseDialog({
                         {selectedPerson.fullName}
                       </p>
                       <p className="text-sm text-gray-500 font-mono">
-                        {selectedPerson.nin || "No NIN"}
+                        {selectedPerson.nationalId || "No NIN"}
                       </p>
                     </div>
                     <Button

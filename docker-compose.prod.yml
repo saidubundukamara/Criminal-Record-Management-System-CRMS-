@@ -1,0 +1,533 @@
+# Docker Compose - Production Configuration
+# Criminal Record Management System (CRMS)
+#
+# IMPORTANT: This is a production configuration with security hardening.
+# DO NOT use this file without:
+# 1. Setting up proper secrets (see .env.production.example)
+# 2. Configuring SSL/TLS certificates
+# 3. Reviewing and customizing all environment variables
+# 4. Setting up proper backup procedures
+#
+# Usage:
+#   docker-compose -f docker-compose.prod.yml up -d
+#
+# Prerequisites:
+#   - .env.production file with production secrets
+#   - SSL certificates in ./ssl/ directory (or Let's Encrypt configured)
+#   - Domain name pointing to server
+#   - Firewall configured (ports 80, 443 only)
+
+version: '3.9'
+
+services:
+  # ============================================
+  # Nginx Reverse Proxy with SSL/TLS
+  # ============================================
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: crms-nginx
+    restart: always
+    depends_on:
+      - app
+    ports:
+      - "80:80"       # HTTP (redirects to HTTPS)
+      - "443:443"     # HTTPS
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/ssl.conf:/etc/nginx/conf.d/ssl.conf:ro
+      - ./ssl/certs:/etc/nginx/ssl/certs:ro
+      - ./ssl/private:/etc/nginx/ssl/private:ro
+      - ./ssl/dhparam.pem:/etc/nginx/ssl/dhparam.pem:ro
+      - nginx_logs:/var/log/nginx
+      # Let's Encrypt ACME challenge directory
+      - letsencrypt_webroot:/var/www/certbot:ro
+    environment:
+      - NGINX_HOST=${DOMAIN_NAME:-crms.example.com}
+      - NGINX_PORT=443
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - crms-network
+    labels:
+      com.crms.service: "reverse-proxy"
+      com.crms.environment: "production"
+
+  # ============================================
+  # Let's Encrypt Certificate Management (Optional)
+  # ============================================
+  certbot:
+    image: certbot/certbot:latest
+    container_name: crms-certbot
+    volumes:
+      - ./ssl/certs:/etc/letsencrypt
+      - letsencrypt_webroot:/var/www/certbot
+    entrypoint: "/bin/sh -c 'trap exit TERM; while :; do certbot renew; sleep 12h & wait $${!}; done;'"
+    networks:
+      - crms-network
+    labels:
+      com.crms.service: "ssl-renewal"
+      com.crms.environment: "production"
+
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  postgres:
+    image: postgres:15-alpine
+    container_name: crms-db
+    restart: always
+    environment:
+      POSTGRES_USER: ${DB_USER:-crms}
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+      POSTGRES_DB: ${DB_NAME:-crms}
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
+      # Performance tuning
+      POSTGRES_SHARED_BUFFERS: ${DB_SHARED_BUFFERS:-256MB}
+      POSTGRES_EFFECTIVE_CACHE_SIZE: ${DB_EFFECTIVE_CACHE_SIZE:-1GB}
+      POSTGRES_WORK_MEM: ${DB_WORK_MEM:-16MB}
+      POSTGRES_MAINTENANCE_WORK_MEM: ${DB_MAINTENANCE_WORK_MEM:-128MB}
+    secrets:
+      - db_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - postgres_backups:/backups
+      - ./postgres/postgresql.conf:/etc/postgresql/postgresql.conf:ro
+    # Security: Do NOT expose PostgreSQL port in production
+    # Access only via internal Docker network
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-crms} -d ${DB_NAME:-crms}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - crms-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 512M
+    labels:
+      com.crms.service: "database"
+      com.crms.environment: "production"
+      com.crms.backup: "required"
+
+  # ============================================
+  # MinIO S3-Compatible Storage (Evidence Files)
+  # ============================================
+  minio:
+    image: minio/minio:latest
+    container_name: crms-storage
+    restart: always
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER_FILE: /run/secrets/minio_root_user
+      MINIO_ROOT_PASSWORD_FILE: /run/secrets/minio_root_password
+      MINIO_BROWSER_REDIRECT_URL: https://${DOMAIN_NAME:-crms.example.com}/minio-console
+      MINIO_SERVER_URL: https://${DOMAIN_NAME:-crms.example.com}/minio
+      # Security settings
+      MINIO_BROWSER: "on"
+      MINIO_PROMETHEUS_AUTH_TYPE: "public"
+    secrets:
+      - minio_root_user
+      - minio_root_password
+    volumes:
+      - minio_data:/data
+      - minio_config:/root/.minio
+    # Security: Do NOT expose MinIO ports directly
+    # Access via Nginx reverse proxy only
+    expose:
+      - "9000"  # MinIO API
+      - "9001"  # MinIO Console
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+      start_period: 10s
+    networks:
+      - crms-network
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 256M
+    labels:
+      com.crms.service: "storage"
+      com.crms.environment: "production"
+      com.crms.backup: "required"
+
+  # ============================================
+  # MinIO Bucket Initialization
+  # ============================================
+  createbucket:
+    image: minio/mc:latest
+    container_name: crms-createbucket
+    depends_on:
+      minio:
+        condition: service_healthy
+    secrets:
+      - minio_root_user
+      - minio_root_password
+    entrypoint: >
+      /bin/sh -c "
+      MINIO_USER=$$(cat /run/secrets/minio_root_user);
+      MINIO_PASS=$$(cat /run/secrets/minio_root_password);
+      /usr/bin/mc config host add crms-minio http://minio:9000 $$MINIO_USER $$MINIO_PASS;
+      /usr/bin/mc mb crms-minio/crms-evidence --ignore-existing;
+      /usr/bin/mc anonymous set download crms-minio/crms-evidence;
+      /usr/bin/mc ilm add crms-minio/crms-evidence --expiry-days 2555;
+      echo 'MinIO bucket initialized successfully';
+      exit 0;
+      "
+    networks:
+      - crms-network
+    labels:
+      com.crms.service: "initialization"
+      com.crms.environment: "production"
+
+  # ============================================
+  # Redis (Session Management & Caching)
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: crms-redis
+    restart: always
+    command: >
+      redis-server
+      --requirepass ${REDIS_PASSWORD}
+      --maxmemory 256mb
+      --maxmemory-policy allkeys-lru
+      --appendonly yes
+      --appendfsync everysec
+    environment:
+      REDIS_PASSWORD_FILE: /run/secrets/redis_password
+    secrets:
+      - redis_password
+    volumes:
+      - redis_data:/data
+    # Security: Do NOT expose Redis port
+    expose:
+      - "6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - crms-network
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 128M
+    labels:
+      com.crms.service: "cache"
+      com.crms.environment: "production"
+
+  # ============================================
+  # Next.js Application
+  # ============================================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+        NEXT_TELEMETRY_DISABLED: 1
+    image: crms-app:${VERSION:-latest}
+    container_name: crms-app
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      # Application
+      NODE_ENV: production
+      NEXT_TELEMETRY_DISABLED: 1
+      PORT: 3000
+
+      # Country Configuration
+      COUNTRY_CODE: ${COUNTRY_CODE:-SLE}
+      COUNTRY_NAME: ${COUNTRY_NAME:-Sierra Leone}
+
+      # Database
+      DATABASE_URL: postgresql://${DB_USER:-crms}:${DB_PASSWORD}@postgres:5432/${DB_NAME:-crms}?schema=public&sslmode=prefer
+
+      # NextAuth.js
+      NEXTAUTH_URL: https://${DOMAIN_NAME:-crms.example.com}
+      NEXTAUTH_SECRET_FILE: /run/secrets/nextauth_secret
+
+      # Encryption
+      ENCRYPTION_KEY_FILE: /run/secrets/encryption_key
+
+      # Storage (MinIO S3)
+      S3_ENDPOINT: http://minio:9000
+      S3_ACCESS_KEY_FILE: /run/secrets/minio_root_user
+      S3_SECRET_KEY_FILE: /run/secrets/minio_root_password
+      S3_BUCKET: crms-evidence
+      S3_REGION: us-east-1
+      S3_FORCE_PATH_STYLE: "true"
+
+      # Redis (Session Management)
+      REDIS_URL: redis://:${REDIS_PASSWORD}@redis:6379
+
+      # USSD (Africa's Talking / Twilio)
+      ENABLE_USSD: ${ENABLE_USSD:-true}
+      USSD_API_KEY_FILE: /run/secrets/ussd_api_key
+      USSD_USERNAME: ${USSD_USERNAME}
+      USSD_SHORTCODE: ${USSD_SHORTCODE}
+
+      # Feature Flags
+      ENABLE_MFA: ${ENABLE_MFA:-true}
+      ENABLE_OFFLINE: ${ENABLE_OFFLINE:-true}
+      ENABLE_ANALYTICS: ${ENABLE_ANALYTICS:-false}
+
+      # Security
+      RATE_LIMIT_MAX: ${RATE_LIMIT_MAX:-100}
+      RATE_LIMIT_WINDOW: ${RATE_LIMIT_WINDOW:-900000}
+      SESSION_TIMEOUT: ${SESSION_TIMEOUT:-900000}
+
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: json
+    secrets:
+      - nextauth_secret
+      - encryption_key
+      - minio_root_user
+      - minio_root_password
+      - ussd_api_key
+    volumes:
+      - app_logs:/app/logs
+      - app_uploads:/app/uploads
+    # Security: Do NOT expose app port directly
+    # Access via Nginx reverse proxy only
+    expose:
+      - "3000"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:3000/api/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
+        ]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+    networks:
+      - crms-network
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 512M
+      replicas: 1  # Increase for horizontal scaling
+    labels:
+      com.crms.service: "application"
+      com.crms.environment: "production"
+      com.crms.version: "${VERSION:-latest}"
+
+  # ============================================
+  # Backup Service (Optional - Cron-based)
+  # ============================================
+  backup:
+    image: postgres:15-alpine
+    container_name: crms-backup
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    environment:
+      PGHOST: postgres
+      PGPORT: 5432
+      PGDATABASE: ${DB_NAME:-crms}
+      PGUSER: ${DB_USER:-crms}
+      PGPASSWORD_FILE: /run/secrets/db_password
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-30}
+    secrets:
+      - db_password
+    volumes:
+      - postgres_backups:/backups
+      - ./scripts/backup.sh:/backup.sh:ro
+    entrypoint: /bin/sh
+    command:
+      - -c
+      - |
+        echo "Starting backup service..."
+        echo "Backups will run daily at 2:00 AM"
+        # Install crond
+        apk add --no-cache dcron
+        # Create cron job
+        echo "0 2 * * * /backup.sh >> /var/log/cron.log 2>&1" | crontab -
+        # Start crond in foreground
+        crond -f -l 2
+    networks:
+      - crms-network
+    labels:
+      com.crms.service: "backup"
+      com.crms.environment: "production"
+
+# ============================================
+# Docker Secrets (Recommended for Production)
+# ============================================
+secrets:
+  db_password:
+    file: ./secrets/db_password.txt
+  nextauth_secret:
+    file: ./secrets/nextauth_secret.txt
+  encryption_key:
+    file: ./secrets/encryption_key.txt
+  minio_root_user:
+    file: ./secrets/minio_root_user.txt
+  minio_root_password:
+    file: ./secrets/minio_root_password.txt
+  redis_password:
+    file: ./secrets/redis_password.txt
+  ussd_api_key:
+    file: ./secrets/ussd_api_key.txt
+
+# ============================================
+# Persistent Volumes
+# ============================================
+volumes:
+  # Database
+  postgres_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-/var/lib/crms}/postgres
+  postgres_backups:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${BACKUP_PATH:-/var/backups/crms}/postgres
+
+  # Storage
+  minio_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${DATA_PATH:-/var/lib/crms}/minio
+  minio_config:
+    driver: local
+
+  # Cache
+  redis_data:
+    driver: local
+
+  # Application
+  app_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${LOG_PATH:-/var/log/crms}
+  app_uploads:
+    driver: local
+
+  # Nginx
+  nginx_logs:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ${LOG_PATH:-/var/log/crms}/nginx
+
+  # Let's Encrypt
+  letsencrypt_webroot:
+    driver: local
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  crms-network:
+    driver: bridge
+    driver_opts:
+      com.docker.network.bridge.name: crms-br0
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.20.0.0/16
+    labels:
+      com.crms.network: "production"
+      com.crms.environment: "production"
+
+# ============================================
+# Production Deployment Notes
+# ============================================
+# 1. Setup Secrets:
+#    mkdir -p secrets
+#    openssl rand -base64 32 > secrets/nextauth_secret.txt
+#    openssl rand -hex 32 > secrets/encryption_key.txt
+#    # Set strong passwords for other secrets
+#
+# 2. Create Required Directories:
+#    sudo mkdir -p /var/lib/crms/{postgres,minio}
+#    sudo mkdir -p /var/backups/crms/postgres
+#    sudo mkdir -p /var/log/crms/nginx
+#    sudo chown -R 1000:1000 /var/lib/crms /var/backups/crms /var/log/crms
+#
+# 3. SSL/TLS Setup (Option A - Let's Encrypt):
+#    docker-compose -f docker-compose.prod.yml run --rm certbot certonly \
+#      --webroot --webroot-path=/var/www/certbot \
+#      --email admin@example.com --agree-tos --no-eff-email \
+#      -d crms.example.com
+#
+# 4. SSL/TLS Setup (Option B - Custom Certificates):
+#    mkdir -p ssl/{certs,private}
+#    cp your-cert.pem ssl/certs/
+#    cp your-key.pem ssl/private/
+#    openssl dhparam -out ssl/dhparam.pem 2048
+#
+# 5. Environment Variables:
+#    cp .env.production.example .env.production
+#    # Edit .env.production with production values
+#
+# 6. Initialize Database:
+#    docker-compose -f docker-compose.prod.yml up -d postgres
+#    docker-compose -f docker-compose.prod.yml exec app npx prisma migrate deploy
+#    docker-compose -f docker-compose.prod.yml exec app npx prisma db seed
+#
+# 7. Start All Services:
+#    docker-compose -f docker-compose.prod.yml up -d
+#
+# 8. Verify Deployment:
+#    docker-compose -f docker-compose.prod.yml ps
+#    docker-compose -f docker-compose.prod.yml logs -f
+#    curl https://crms.example.com/api/health
+#
+# 9. Monitor Logs:
+#    docker-compose -f docker-compose.prod.yml logs -f app
+#    docker-compose -f docker-compose.prod.yml logs -f postgres
+#
+# 10. Backup & Restore:
+#     # Backup: Automatic daily backups via backup service
+#     # Manual backup: docker-compose -f docker-compose.prod.yml exec backup /backup.sh
+#     # Restore: See DEPLOYMENT_GUIDE.md

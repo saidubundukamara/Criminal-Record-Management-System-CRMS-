@@ -205,7 +205,7 @@ export default async function WantedPersonDetailPage({
               <div>
                 <p className="text-sm text-gray-600">NIN</p>
                 <p className="text-base font-semibold text-gray-900">
-                  {person?.nin || "Not available"}
+                  {person?.nationalId || "Not available"}
                 </p>
               </div>
               <div>

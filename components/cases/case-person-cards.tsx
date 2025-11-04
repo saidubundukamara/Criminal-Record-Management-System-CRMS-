@@ -38,7 +38,7 @@ interface CasePerson {
     fullName: string;
     firstName: string;
     lastName: string;
-    nin: string | null;
+    nationalId: string | null;
     photoUrl: string | null;
     gender: string;
     dateOfBirth: string | null;
@@ -192,9 +192,9 @@ export function CasePersonCards({ caseId, persons }: CasePersonCardsProps) {
                             <ExternalLink className="h-3 w-3" />
                           </Link>
                           <div className="flex flex-wrap items-center gap-2 mt-1">
-                            {casePerson.person.nin && (
+                            {casePerson.person.nationalId && (
                               <span className="text-sm text-gray-500 font-mono">
-                                NIN: {casePerson.person.nin}
+                                NIN: {casePerson.person.nationalId}
                               </span>
                             )}
                             <span className="text-sm text-gray-500">•</span>

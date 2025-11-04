@@ -11,11 +11,11 @@ import { Person, Gender, EncryptedAddress, PersonType } from "@/src/domain/entit
  * DTO for creating a new person
  */
 export interface CreatePersonDto {
-  nin?: string | null;
+  nationalId?: string | null;
   firstName: string;
   lastName: string;
   middleName?: string | null;
-  alias?: string[];
+  aliases?: string[];
   dateOfBirth?: Date | null;
   gender: Gender;
   nationality?: string | null;
@@ -46,11 +46,11 @@ export interface CreatePersonDto {
  * DTO for updating an existing person
  */
 export interface UpdatePersonDto {
-  nin?: string | null;
+  nationalId?: string | null;
   firstName?: string;
   lastName?: string;
   middleName?: string | null;
-  alias?: string[];
+  aliases?: string[];
   dateOfBirth?: Date | null;
   gender?: Gender;
   nationality?: string | null;
@@ -80,8 +80,8 @@ export interface UpdatePersonDto {
  * Filters for searching persons
  */
 export interface PersonFilters {
-  search?: string; // Search by name, NIN, alias
-  nin?: string;
+  search?: string; // Search by name, National ID, alias
+  nationalId?: string;
   gender?: Gender;
   nationality?: string;
   ageMin?: number;
@@ -145,9 +145,9 @@ export interface IPersonRepository {
   findById(id: string): Promise<Person | null>;
 
   /**
-   * Find person by NIN (National Identification Number)
+   * Find person by National ID (National Identification Number)
    */
-  findByNIN(nin: string): Promise<Person | null>;
+  findByNationalId(nationalId: string): Promise<Person | null>;
 
   /**
    * Find person by fingerprint hash
@@ -249,9 +249,9 @@ export interface IPersonRepository {
   getStatistics(stationId?: string): Promise<PersonStatistics>;
 
   /**
-   * Check if NIN already exists (for validation)
+   * Check if National ID already exists (for validation)
    */
-  existsByNIN(nin: string): Promise<boolean>;
+  existsByNationalId(nationalId: string): Promise<boolean>;
 
   /**
    * Get persons created by a specific officer

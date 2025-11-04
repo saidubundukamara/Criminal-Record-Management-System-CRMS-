@@ -384,7 +384,7 @@ export default async function DashboardPage() {
                   <Globe className="h-6 w-6 text-gray-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-gray-900">National Statistics</h3>
+                  <h3 className="font-semibold text-gray-900">National Statistics grtrtrg</h3>
                   <p className="mt-1 text-sm text-gray-500">Requires national permissions</p>
                 </div>
               </div>

@@ -172,7 +172,7 @@ export function CaseReportPDF({ data }: CaseReportPDFProps) {
                   <Text style={styles.tableCol}>
                     {person.firstName} {person.lastName}
                   </Text>
-                  <Text style={styles.tableCol}>{person.nin}</Text>
+                  <Text style={styles.tableCol}>{person.nationalId}</Text>
                   <Text style={styles.tableCol}>{person.role}</Text>
                 </View>
               ))}

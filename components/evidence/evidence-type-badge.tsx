@@ -83,7 +83,9 @@ export function EvidenceTypeBadge({
     },
   };
 
-  const { label, className: badgeClassName, icon: Icon } = config[type];
+  // Fallback to "other" if type is not in config (handles legacy/incorrect data)
+  const typeConfig = config[type] || config.other;
+  const { label, className: badgeClassName, icon: Icon } = typeConfig;
 
   const sizeClasses = {
     sm: "text-xs px-2 py-0.5",

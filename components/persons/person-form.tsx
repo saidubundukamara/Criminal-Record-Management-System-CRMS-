@@ -35,7 +35,7 @@ import { useToast } from "@/hooks/use-toast";
 
 const personSchema = z.object({
   // Basic Information
-  nin: z.string().optional(),
+  nationalId: z.string().optional(),
   firstName: z
     .string()
     .min(2, "First name must be at least 2 characters")
@@ -77,7 +77,7 @@ export function PersonForm({ initialData, personId, onSuccess }: PersonFormProps
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [aliases, setAliases] = useState<string[]>(
-    (initialData as any)?.alias || []
+    (initialData as any)?.aliases || []
   );
   const [newAlias, setNewAlias] = useState("");
   const [languages, setLanguages] = useState<string[]>(
@@ -88,7 +88,7 @@ export function PersonForm({ initialData, personId, onSuccess }: PersonFormProps
   const form = useForm<PersonFormData>({
     resolver: zodResolver(personSchema),
     defaultValues: {
-      nin: initialData?.nin || "",
+      nationalId: initialData?.nationalId || "",
       firstName: initialData?.firstName || "",
       lastName: initialData?.lastName || "",
       middleName: initialData?.middleName || "",
@@ -139,7 +139,7 @@ export function PersonForm({ initialData, personId, onSuccess }: PersonFormProps
 
       const payload = {
         ...data,
-        alias: aliases,
+        aliases: aliases,
         languagesSpoken: languages,
       };
 
@@ -232,7 +232,7 @@ export function PersonForm({ initialData, personId, onSuccess }: PersonFormProps
 
             <FormField
               control={form.control}
-              name="nin"
+              name="nationalId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>NIN (National ID)</FormLabel>

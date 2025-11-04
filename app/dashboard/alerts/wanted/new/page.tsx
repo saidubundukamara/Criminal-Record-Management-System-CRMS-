@@ -82,7 +82,7 @@ export default function CreateWantedPersonPage() {
 
   const selectPerson = (person: any) => {
     setFormData((prev) => ({ ...prev, personId: person.id }));
-    setPersonSearch(`${person.firstName} ${person.lastName} (${person.nin || "No NIN"})`);
+    setPersonSearch(`${person.firstName} ${person.lastName} (${person.nationalId || "No NIN"})`);
     setSearchResults([]);
   };
 
@@ -214,7 +214,7 @@ export default function CreateWantedPersonPage() {
                     {person.firstName} {person.lastName}
                   </p>
                   <p className="text-sm text-gray-600">
-                    NIN: {person.nin || "Not provided"}
+                    NIN: {person.nationalId || "Not provided"}
                   </p>
                   {person.dateOfBirth && (
                     <p className="text-xs text-gray-500">

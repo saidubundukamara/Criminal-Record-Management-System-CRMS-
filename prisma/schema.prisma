@@ -47,10 +47,12 @@ model Officer {
   cases             Case[]
   auditLogs         AuditLog[]
   backgroundChecks  BackgroundCheck[]
-  evidence          Evidence[]
+  evidenceCollected Evidence[]      @relation("EvidenceCollectedBy")
+  evidenceSealed    Evidence[]      @relation("EvidenceSealedBy")
   amberAlerts       AmberAlert[]
   wantedPersons     WantedPerson[]
-  persons           Person[]
+  personsCreated    Person[]        @relation("PersonCreatedBy")
+  personsUpdated    Person[]        @relation("PersonUpdatedBy")
   sessions          Session[]
   ussdQueries       USSDQueryLog[]
 
@@ -119,6 +121,8 @@ model Station {
   active      Boolean   @default(true)
   officers    Officer[]
   cases       Case[]
+  persons     Person[]
+  evidence    Evidence[]
   vehicles    Vehicle[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -139,23 +143,37 @@ model Person {
   lastName        String
   middleName      String?
   fullName        String?       // Optional computed/cached field for backward compatibility
-  aliases         String[]
+  aliases         String[]      @default([])
   dob             DateTime?
   gender          String?
   nationality     String        @default("SLE") // ISO 3166-1 alpha-3
+  placeOfBirth    String?
+  occupation      String?
+  maritalStatus   String?
+  educationLevel  String?
+  tribe           String?       // Relevant in many African contexts
+  religion        String?
+  languagesSpoken String[]      @default([])
+  physicalDescription String?   @db.Text
   addressEncrypted String?      // AES-256 encrypted
   phoneEncrypted  String?       // AES-256 encrypted
   emailEncrypted  String?       // AES-256 encrypted
   photoUrl        String?
   fingerprintHash String?       // SHA-256 hash
   biometricHash   String?
+  criminalHistory String?       @db.Text
+  notes           String?       @db.Text
   // Status tracking fields
   isWanted            Boolean   @default(false)
   wantedSince         DateTime?
   isDeceasedOrMissing Boolean   @default(false)
   riskLevel           String?   // "low", "medium", "high"
+  stationId       String?
+  station         Station?      @relation(fields: [stationId], references: [id])
   createdById     String
-  createdBy       Officer       @relation(fields: [createdById], references: [id])
+  createdBy       Officer       @relation("PersonCreatedBy", fields: [createdById], references: [id])
+  updatedById     String?
+  updatedBy       Officer?      @relation("PersonUpdatedBy", fields: [updatedById], references: [id])
   createdAt       DateTime      @default(now())
   updatedAt       DateTime      @updatedAt
 
@@ -167,6 +185,8 @@ model Person {
   @@index([firstName, lastName])
   @@index([countryCode])
   @@index([createdById])
+  @@index([updatedById])
+  @@index([stationId])
   @@index([isWanted])
   @@index([riskLevel])
   @@map("persons")
@@ -234,25 +254,38 @@ model Evidence {
   id              String   @id @default(uuid())
   caseId          String
   case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  type            String   // "photo", "document", "video", "physical", "digital"
+  type            String   // "physical", "document", "photo", "video", "audio", "digital", "biological", "other"
   description     String?  @db.Text
   qrCode          String   @unique
+  status          String   @default("collected") // "collected", "stored", "analyzed", "court", "returned", "destroyed"
+  collectedLocation String // Physical location where evidence was collected
+  collectedDate   DateTime
+  collectedById   String
+  collectedBy     Officer  @relation("EvidenceCollectedBy", fields: [collectedById], references: [id])
   storageUrl      String?  // S3 URL
+  storageLocation String?  // Physical storage location
   fileKey         String?  // S3 key for file operations
   fileHash        String?  // SHA-256 for integrity
   fileName        String?
   fileSize        Int?
   mimeType        String?
-  collectedDate   DateTime
-  collectedById   String
-  collectedBy     Officer  @relation(fields: [collectedById], references: [id])
   chainOfCustody  Json     // Array of custody events
+  tags            String[] @default([])
+  notes           String?  @db.Text
+  isSealed        Boolean  @default(false)
+  sealedAt        DateTime?
+  sealedById      String?
+  sealedBy        Officer? @relation("EvidenceSealedBy", fields: [sealedById], references: [id])
+  stationId       String
+  station         Station  @relation(fields: [stationId], references: [id])
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@index([caseId])
   @@index([qrCode])
   @@index([collectedById])
+  @@index([stationId])
+  @@index([status])
   @@map("evidence")
 }
 

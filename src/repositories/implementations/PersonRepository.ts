@@ -32,7 +32,7 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
   private toDomain(data: any): Person {
     return new Person(
       data.id,
-      data.nin,
+      data.nationalId,
       data.firstName,
       data.lastName,
       data.middleName,
@@ -101,13 +101,13 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
         { firstName: { contains: filters.search, mode: "insensitive" } },
         { lastName: { contains: filters.search, mode: "insensitive" } },
         { middleName: { contains: filters.search, mode: "insensitive" } },
-        { nin: { contains: filters.search, mode: "insensitive" } },
+        { nationalId: { contains: filters.search, mode: "insensitive" } },
         { aliases: { has: filters.search } },
       ];
     }
 
-    if (filters.nin) {
-      where.nin = filters.nin;
+    if (filters.nationalId) {
+      where.nationalId = filters.nationalId;
     }
 
     if (filters.gender) {
@@ -196,11 +196,11 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
   }
 
   /**
-   * Find person by NIN
+   * Find person by National ID
    */
-  async findByNIN(nin: string): Promise<Person | null> {
+  async findByNationalId(nationalId: string): Promise<Person | null> {
     const data = await this.prisma.person.findUnique({
-      where: { nin } as any,
+      where: { nationalId } as any,
     });
 
     return data ? this.toDomain(data) : null;
@@ -357,11 +357,11 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
   async create(dto: CreatePersonDto): Promise<Person> {
     const data = await this.prisma.person.create({
       data: {
-        nin: dto.nin || null,
+        nationalId: dto.nationalId || null,
         firstName: dto.firstName,
         lastName: dto.lastName,
         middleName: dto.middleName || null,
-        aliases: dto.alias || [],
+        aliases: dto.aliases || [],
         dateOfBirth: dto.dateOfBirth || null,
         gender: dto.gender,
         nationality: dto.nationality || null,
@@ -399,11 +399,11 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
     const data = await this.prisma.person.update({
       where: { id },
       data: {
-        ...(dto.nin !== undefined && { nin: dto.nin }),
+        ...(dto.nationalId !== undefined && { nationalId: dto.nationalId }),
         ...(dto.firstName && { firstName: dto.firstName }),
         ...(dto.lastName && { lastName: dto.lastName }),
         ...(dto.middleName !== undefined && { middleName: dto.middleName }),
-        ...(dto.alias && { aliases: dto.alias }),
+        ...(dto.aliases && { aliases: dto.aliases }),
         ...(dto.dateOfBirth !== undefined && { dateOfBirth: dto.dateOfBirth }),
         ...(dto.gender && { gender: dto.gender }),
         ...(dto.nationality !== undefined && { nationality: dto.nationality }),
@@ -609,7 +609,7 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
         where,
         select: {
           dateOfBirth: true,
-          nin: true,
+          nationalId: true,
           nationality: true,
           addresses: true,
         },
@@ -631,7 +631,7 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
       }
 
       if (
-        person.nin &&
+        person.nationalId &&
         person.dateOfBirth &&
         person.nationality &&
         (person.addresses as any[]).length > 0
@@ -662,11 +662,11 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
   }
 
   /**
-   * Check if NIN already exists
+   * Check if National ID already exists
    */
-  async existsByNIN(nin: string): Promise<boolean> {
+  async existsByNationalId(nationalId: string): Promise<boolean> {
     const count = await this.prisma.person.count({
-      where: { nin } as any,
+      where: { nationalId } as any,
     });
     return count > 0;
   }
