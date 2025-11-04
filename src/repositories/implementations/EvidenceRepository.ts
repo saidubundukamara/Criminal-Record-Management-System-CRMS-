@@ -375,17 +375,15 @@ export class EvidenceRepository extends BaseRepository implements IEvidenceRepos
         ...(dto.type && { type: dto.type }),
         ...(dto.description && { description: dto.description }),
         ...(dto.status && { status: dto.status }),
-        ...(dto.fileUrl !== undefined && { fileUrl: dto.fileUrl }),
+        ...(dto.fileUrl !== undefined && { storageUrl: dto.fileUrl }),
         ...(dto.fileName !== undefined && { fileName: dto.fileName }),
         ...(dto.fileSize !== undefined && { fileSize: dto.fileSize }),
-        ...(dto.fileMimeType !== undefined && { fileMimeType: dto.fileMimeType }),
+        ...(dto.fileMimeType !== undefined && { mimeType: dto.fileMimeType }),
         ...(dto.fileHash !== undefined && { fileHash: dto.fileHash }),
         ...(dto.storageLocation !== undefined && { storageLocation: dto.storageLocation }),
         ...(dto.tags && { tags: dto.tags }),
         ...(dto.notes !== undefined && { notes: dto.notes }),
-        ...(dto.isSealed !== undefined && { isSealed: dto.isSealed }),
-        ...(dto.sealedAt !== undefined && { sealedAt: dto.sealedAt }),
-        ...(dto.sealedBy !== undefined && { sealedBy: dto.sealedBy }),
+        // Sealed fields should only be updated via sealEvidence method
       },
     });
 
@@ -442,8 +440,8 @@ export class EvidenceRepository extends BaseRepository implements IEvidenceRepos
       data: {
         isSealed: true,
         sealedAt: new Date(),
-        sealedBy,
-      } as any,
+        sealedById: sealedBy,
+      },
     });
 
     return this.toDomain(data);

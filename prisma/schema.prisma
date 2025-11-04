@@ -47,7 +47,8 @@ model Officer {
   cases             Case[]
   auditLogs         AuditLog[]
   backgroundChecks  BackgroundCheck[]
-  evidence          Evidence[]
+  evidenceCollected Evidence[]      @relation("EvidenceCollectedBy")
+  evidenceSealed    Evidence[]      @relation("EvidenceSealedBy")
   amberAlerts       AmberAlert[]
   wantedPersons     WantedPerson[]
   personsCreated    Person[]        @relation("PersonCreatedBy")
@@ -121,6 +122,7 @@ model Station {
   officers    Officer[]
   cases       Case[]
   persons     Person[]
+  evidence    Evidence[]
   vehicles    Vehicle[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
@@ -252,25 +254,38 @@ model Evidence {
   id              String   @id @default(uuid())
   caseId          String
   case            Case     @relation(fields: [caseId], references: [id], onDelete: Cascade)
-  type            String   // "photo", "document", "video", "physical", "digital"
+  type            String   // "physical", "document", "photo", "video", "audio", "digital", "biological", "other"
   description     String?  @db.Text
   qrCode          String   @unique
+  status          String   @default("collected") // "collected", "stored", "analyzed", "court", "returned", "destroyed"
+  collectedLocation String // Physical location where evidence was collected
+  collectedDate   DateTime
+  collectedById   String
+  collectedBy     Officer  @relation("EvidenceCollectedBy", fields: [collectedById], references: [id])
   storageUrl      String?  // S3 URL
+  storageLocation String?  // Physical storage location
   fileKey         String?  // S3 key for file operations
   fileHash        String?  // SHA-256 for integrity
   fileName        String?
   fileSize        Int?
   mimeType        String?
-  collectedDate   DateTime
-  collectedById   String
-  collectedBy     Officer  @relation(fields: [collectedById], references: [id])
   chainOfCustody  Json     // Array of custody events
+  tags            String[] @default([])
+  notes           String?  @db.Text
+  isSealed        Boolean  @default(false)
+  sealedAt        DateTime?
+  sealedById      String?
+  sealedBy        Officer? @relation("EvidenceSealedBy", fields: [sealedById], references: [id])
+  stationId       String
+  station         Station  @relation(fields: [stationId], references: [id])
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
   @@index([caseId])
   @@index([qrCode])
   @@index([collectedById])
+  @@index([stationId])
+  @@index([status])
   @@map("evidence")
 }
 

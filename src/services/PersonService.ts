@@ -110,10 +110,10 @@ export class PersonService {
       }
     }
 
-    // NIN validation (if provided)
+    // National ID validation (if provided)
     if ("nin" in data && data.nin) {
-      if (!Person.isValidNIN(data.nin)) {
-        throw new ValidationError("Invalid NIN format");
+      if (!Person.isValidNationalId(data.nin)) {
+        throw new ValidationError("Invalid National ID format");
       }
     }
 
@@ -230,20 +230,20 @@ export class PersonService {
   }
 
   /**
-   * Search by NIN
+   * Search by National ID
    */
   async findByNIN(nin: string, requestingOfficerId: string): Promise<Person | null> {
-    const person = await this.personRepo.findByNIN(nin);
+    const person = await this.personRepo.findByNationalId(nin);
 
     if (person) {
-      // Audit NIN search
+      // Audit National ID search
       await this.auditRepo.create({
         entityType: "person",
         entityId: person.id,
         officerId: requestingOfficerId,
         action: "read",
         success: true,
-        details: { searchType: "nin", nin },
+        details: { searchType: "nationalId", nin },
       });
     }
 
@@ -285,21 +285,21 @@ export class PersonService {
     // Validate input
     this.validatePersonData(input);
 
-    // Check for duplicate NIN
+    // Check for duplicate National ID
     if (input.nin) {
-      const existing = await this.personRepo.existsByNIN(input.nin);
+      const existing = await this.personRepo.existsByNationalId(input.nin);
       if (existing) {
-        throw new ValidationError(`Person with NIN ${input.nin} already exists`);
+        throw new ValidationError(`Person with National ID ${input.nin} already exists`);
       }
     }
 
     // Prepare DTO
     const dto: CreatePersonDto = {
-      nin: input.nin || null,
+      nationalId: input.nin || null,
       firstName: input.firstName,
       lastName: input.lastName,
       middleName: input.middleName || null,
-      alias: input.alias || [],
+      aliases: input.alias || [],
       dateOfBirth: input.dateOfBirth ? new Date(input.dateOfBirth) : null,
       gender: input.gender,
       nationality: input.nationality || null,
@@ -338,7 +338,7 @@ export class PersonService {
       success: true,
       details: {
         personName: person.getFullName(),
-        nin: person.nin,
+        nationalId: person.nationalId,
         hasFingerprints: person.hasBiometricData(),
       },
       ipAddress,
@@ -365,21 +365,21 @@ export class PersonService {
     // Validate input
     this.validatePersonData(input);
 
-    // Check for duplicate NIN (if changing NIN)
-    if (input.nin && input.nin !== existing.nin) {
-      const ninExists = await this.personRepo.existsByNIN(input.nin);
-      if (ninExists) {
-        throw new ValidationError(`Person with NIN ${input.nin} already exists`);
+    // Check for duplicate National ID (if changing National ID)
+    if (input.nin && input.nin !== existing.nationalId) {
+      const nationalIdExists = await this.personRepo.existsByNationalId(input.nin);
+      if (nationalIdExists) {
+        throw new ValidationError(`Person with National ID ${input.nin} already exists`);
       }
     }
 
     // Prepare DTO
     const dto: UpdatePersonDto = {
-      ...(input.nin !== undefined && { nin: input.nin || null }),
+      ...(input.nin !== undefined && { nationalId: input.nin || null }),
       ...(input.firstName && { firstName: input.firstName }),
       ...(input.lastName && { lastName: input.lastName }),
       ...(input.middleName !== undefined && { middleName: input.middleName || null }),
-      ...(input.alias && { alias: input.alias }),
+      ...(input.alias && { aliases: input.alias }),
       ...(input.dateOfBirth !== undefined && {
         dateOfBirth: input.dateOfBirth ? new Date(input.dateOfBirth) : null,
       }),
@@ -467,7 +467,7 @@ export class PersonService {
       success: true,
       details: {
         personName: person.getFullName(),
-        nin: person.nin,
+        nationalId: person.nationalId,
       },
       ipAddress,
     });

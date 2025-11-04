@@ -103,8 +103,8 @@ export class BackgroundCheckService {
       }
     }
 
-    // Look up person by NIN
-    const person = await this.personRepo.findByNIN(input.nin);
+    // Look up person by National ID
+    const person = await this.personRepo.findByNationalId(input.nin);
 
     // Prepare result
     let result: BackgroundCheckResult;

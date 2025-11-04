@@ -470,7 +470,7 @@ export class AlertService {
     const dto: CreateWantedPersonDto = {
       personId: input.personId,
       personName: `${person.firstName} ${person.lastName}`,
-      nin: person.nin,
+      nin: person.nationalId,
       charges: input.charges,
       dangerLevel: input.dangerLevel,
       status: "active",

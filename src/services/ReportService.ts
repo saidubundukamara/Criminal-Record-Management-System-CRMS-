@@ -31,7 +31,7 @@ export interface CaseReportData {
   case: Case;
   persons: {
     id: string;
-    nin: string;
+    nationalId: string;
     firstName: string;
     lastName: string;
     role: string; // suspect, victim, witness, informant
@@ -150,7 +150,7 @@ export class ReportService {
       .slice(0, 5) // Placeholder - would filter by caseId
       .map((p) => ({
         id: p.id,
-        nin: p.nin || "", // Handle nullable NIN
+        nationalId: p.nationalId || "", // Handle nullable nationalId
         firstName: p.firstName,
         lastName: p.lastName,
         role: "suspect" as const, // Placeholder - would come from CasePerson

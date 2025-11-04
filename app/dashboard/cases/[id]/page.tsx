@@ -123,7 +123,7 @@ async function getCasePersons(caseId: string) {
         fullName: `${cp.person.firstName} ${cp.person.middleName ? cp.person.middleName + ' ' : ''}${cp.person.lastName}`,
         firstName: cp.person.firstName,
         lastName: cp.person.lastName,
-        nin: cp.person.nationalId,
+        nationalId: cp.person.nationalId,
         dateOfBirth: cp.person.dob?.toISOString() || null,
         gender: cp.person.gender || '',
         photoUrl: cp.person.photoUrl,
