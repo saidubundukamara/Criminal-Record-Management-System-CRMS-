@@ -21,8 +21,7 @@ import { IEvidenceRepository } from "@/src/domain/interfaces/repositories/IEvide
 import { IAuditLogRepository } from "@/src/domain/interfaces/repositories/IAuditLogRepository";
 import { IBackgroundCheckRepository } from "@/src/domain/interfaces/repositories/IBackgroundCheckRepository";
 import { IAmberAlertRepository } from "@/src/domain/interfaces/repositories/IAmberAlertRepository";
-// Phase 7 - Not yet implemented
-// import { IVehicleRepository } from "@/src/domain/interfaces/repositories/IVehicleRepository";
+import { IVehicleRepository } from "@/src/domain/interfaces/repositories/IVehicleRepository";
 import { ValidationError } from "@/src/lib/errors";
 
 /**
@@ -170,9 +169,8 @@ export class AnalyticsService {
     private readonly evidenceRepo: IEvidenceRepository,
     private readonly auditRepo: IAuditLogRepository,
     private readonly bgCheckRepo: IBackgroundCheckRepository,
-    private readonly alertRepo: IAmberAlertRepository
-    // Phase 7 - vehicleRepo parameter removed until implemented
-    // private readonly vehicleRepo?: IVehicleRepository
+    private readonly alertRepo: IAmberAlertRepository,
+    private readonly vehicleRepo: IVehicleRepository
   ) {}
 
   /**

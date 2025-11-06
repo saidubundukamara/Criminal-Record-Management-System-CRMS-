@@ -26,8 +26,7 @@ import { ISyncQueueRepository } from "@/src/domain/interfaces/repositories/ISync
 import { IBackgroundCheckRepository } from "@/src/domain/interfaces/repositories/IBackgroundCheckRepository";
 import { IAmberAlertRepository } from "@/src/domain/interfaces/repositories/IAmberAlertRepository";
 import { IWantedPersonRepository } from "@/src/domain/interfaces/repositories/IWantedPersonRepository";
-// Phase 7 - Not yet implemented
-// import { IVehicleRepository } from "@/src/domain/interfaces/repositories/IVehicleRepository";
+import { IVehicleRepository } from "@/src/domain/interfaces/repositories/IVehicleRepository";
 
 // Repository Implementations
 import { OfficerRepository } from "@/src/repositories/implementations/OfficerRepository";
@@ -42,8 +41,7 @@ import { SyncQueueRepository } from "@/src/repositories/implementations/SyncQueu
 import { BackgroundCheckRepository } from "@/src/repositories/implementations/BackgroundCheckRepository";
 import { AmberAlertRepository } from "@/src/repositories/implementations/AmberAlertRepository";
 import { WantedPersonRepository } from "@/src/repositories/implementations/WantedPersonRepository";
-// Phase 7 - Not yet implemented
-// import { VehicleRepository } from "@/src/repositories/implementations/VehicleRepository";
+import { VehicleRepository } from "@/src/repositories/implementations/VehicleRepository";
 
 // Services
 import { AuthService } from "@/src/services/AuthService";
@@ -54,8 +52,7 @@ import { EvidenceService } from "@/src/services/EvidenceService";
 import { SyncService } from "@/src/services/SyncService";
 import { BackgroundCheckService } from "@/src/services/BackgroundCheckService";
 import { AlertService } from "@/src/services/AlertService";
-// Phase 7 - Not yet implemented
-// import { VehicleService } from "@/src/services/VehicleService";
+import { VehicleService } from "@/src/services/VehicleService";
 import { AnalyticsService } from "@/src/services/AnalyticsService";
 import { ReportService } from "@/src/services/ReportService";
 import { PerformanceService } from "@/src/services/PerformanceService";
@@ -86,8 +83,7 @@ export class Container {
   public readonly backgroundCheckRepository: IBackgroundCheckRepository;
   public readonly amberAlertRepository: IAmberAlertRepository;
   public readonly wantedPersonRepository: IWantedPersonRepository;
-  // Phase 7 - Not yet implemented
-  // public readonly vehicleRepository: IVehicleRepository;
+  public readonly vehicleRepository: IVehicleRepository;
 
   // Services
   public readonly authService: AuthService;
@@ -98,8 +94,7 @@ export class Container {
   public readonly syncService: SyncService;
   public readonly backgroundCheckService: BackgroundCheckService;
   public readonly alertService: AlertService;
-  // Phase 7 - Not yet implemented
-  // public readonly vehicleService: VehicleService;
+  public readonly vehicleService: VehicleService;
   public readonly analyticsService: AnalyticsService;
   public readonly reportService: ReportService;
   public readonly performanceService: PerformanceService;
@@ -124,8 +119,7 @@ export class Container {
     this.backgroundCheckRepository = new BackgroundCheckRepository(this.prismaClient);
     this.amberAlertRepository = new AmberAlertRepository(this.prismaClient);
     this.wantedPersonRepository = new WantedPersonRepository(this.prismaClient);
-    // Phase 7 - Not yet implemented
-    // this.vehicleRepository = new VehicleRepository(this.prismaClient);
+    this.vehicleRepository = new VehicleRepository(this.prismaClient);
 
     // Initialize Services with injected dependencies
     this.authService = new AuthService(
@@ -169,11 +163,10 @@ export class Container {
       this.auditLogRepository
     );
 
-    // Phase 7 - Not yet implemented
-    // this.vehicleService = new VehicleService(
-    //   this.vehicleRepository,
-    //   this.auditLogRepository
-    // );
+    this.vehicleService = new VehicleService(
+      this.vehicleRepository,
+      this.auditLogRepository
+    );
 
     this.analyticsService = new AnalyticsService(
       this.caseRepository,
@@ -181,9 +174,8 @@ export class Container {
       this.evidenceRepository,
       this.auditLogRepository,
       this.backgroundCheckRepository,
-      this.amberAlertRepository
-      // Phase 7 - Vehicle repository not yet implemented
-      // this.vehicleRepository
+      this.amberAlertRepository,
+      this.vehicleRepository
     );
 
     this.reportService = new ReportService(

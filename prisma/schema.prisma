@@ -6,8 +6,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_DATABASE_URL")
 }
 
 // ==================== AUTHENTICATION & AUTHORIZATION ====================
@@ -31,6 +32,15 @@ model Officer {
   mfaEnabled      Boolean   @default(false)
   mfaSecret       String?   // TOTP secret (encrypted)
   mfaBackupCodes  String[]  // Encrypted backup codes
+
+  // USSD Fields (Phase 7)
+  ussdPhoneNumber    String?   @unique  // E.164 format (+2327812345678)
+  ussdQuickPinHash   String?             // Argon2id hashed 4-digit PIN
+  ussdEnabled        Boolean   @default(false) // Admin-controlled whitelist flag
+  ussdRegisteredAt   DateTime?           // When phone was registered
+  ussdLastUsed       DateTime?           // Last USSD query timestamp
+  ussdDailyLimit     Int       @default(50) // Queries per day
+
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -43,10 +53,12 @@ model Officer {
   wantedPersons     WantedPerson[]
   persons           Person[]
   sessions          Session[]
+  ussdQueryLogs     USSDQueryLog[]
 
   @@index([badge])
   @@index([stationId])
   @@index([roleId])
+  @@index([ussdPhoneNumber])
   @@map("officers")
 }
 
@@ -109,6 +121,7 @@ model Station {
   officers    Officer[]
   cases       Case[]
   evidence    Evidence[] @relation("EvidenceStation")
+  vehicles    Vehicle[]
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
@@ -384,4 +397,53 @@ model SyncQueue {
   @@index([status])
   @@index([createdAt])
   @@map("sync_queue")
+}
+
+// ==================== USSD (Phase 7) ====================
+
+model USSDQueryLog {
+  id            String   @id @default(uuid())
+  officerId     String
+  officer       Officer  @relation(fields: [officerId], references: [id])
+  phoneNumber   String
+  queryType     String   // "wanted", "missing", "background", "vehicle", "stats"
+  searchTerm    String
+  resultSummary String?
+  success       Boolean
+  errorMessage  String?
+  sessionId     String?
+  timestamp     DateTime @default(now())
+
+  @@index([officerId])
+  @@index([timestamp])
+  @@index([queryType])
+  @@index([phoneNumber])
+  @@map("ussd_query_logs")
+}
+
+model Vehicle {
+  id                String    @id @default(uuid())
+  licensePlate      String    @unique
+  ownerNIN          String?   // National ID Number of owner
+  ownerName         String?   // Owner name for quick reference
+  vehicleType       String    // car, truck, motorcycle, bus, van, bicycle, tricycle, other
+  make              String?
+  model             String?
+  color             String?
+  year              Int?
+  status            String    @default("active") // active, stolen, impounded, recovered
+  stolenDate        DateTime?
+  stolenReportedBy  String?   // Officer ID who reported stolen
+  recoveredDate     DateTime?
+  notes             String?
+  stationId         String    // Station responsible for this record
+  station           Station   @relation(fields: [stationId], references: [id])
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  @@index([licensePlate])
+  @@index([status])
+  @@index([ownerNIN])
+  @@index([stationId])
+  @@map("vehicles")
 }

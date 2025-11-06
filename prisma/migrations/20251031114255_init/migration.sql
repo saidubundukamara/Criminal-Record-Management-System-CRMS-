@@ -16,6 +16,12 @@ CREATE TABLE "officers" (
     "mfaEnabled" BOOLEAN NOT NULL DEFAULT false,
     "mfaSecret" TEXT,
     "mfaBackupCodes" TEXT[],
+    "ussdPhoneNumber" TEXT,
+    "ussdQuickPinHash" TEXT,
+    "ussdEnabled" BOOLEAN NOT NULL DEFAULT false,
+    "ussdRegisteredAt" TIMESTAMP(3),
+    "ussdLastUsed" TIMESTAMP(3),
+    "ussdDailyLimit" INTEGER NOT NULL DEFAULT 50,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
 
@@ -280,6 +286,45 @@ CREATE TABLE "sync_queue" (
 );
 
 -- CreateTable
+CREATE TABLE "ussd_query_logs" (
+    "id" TEXT NOT NULL,
+    "officerId" TEXT NOT NULL,
+    "phoneNumber" TEXT NOT NULL,
+    "queryType" TEXT NOT NULL,
+    "searchTerm" TEXT NOT NULL,
+    "resultSummary" TEXT,
+    "success" BOOLEAN NOT NULL,
+    "errorMessage" TEXT,
+    "sessionId" TEXT,
+    "timestamp" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "ussd_query_logs_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "vehicles" (
+    "id" TEXT NOT NULL,
+    "licensePlate" TEXT NOT NULL,
+    "ownerNIN" TEXT,
+    "ownerName" TEXT,
+    "vehicleType" TEXT NOT NULL,
+    "make" TEXT,
+    "model" TEXT,
+    "color" TEXT,
+    "year" INTEGER,
+    "status" TEXT NOT NULL DEFAULT 'active',
+    "stolenDate" TIMESTAMP(3),
+    "stolenReportedBy" TEXT,
+    "recoveredDate" TIMESTAMP(3),
+    "notes" TEXT,
+    "stationId" TEXT NOT NULL,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "vehicles_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "_PermissionToRole" (
     "A" TEXT NOT NULL,
     "B" TEXT NOT NULL,
@@ -294,6 +339,9 @@ CREATE UNIQUE INDEX "officers_badge_key" ON "officers"("badge");
 CREATE UNIQUE INDEX "officers_email_key" ON "officers"("email");
 
 -- CreateIndex
+CREATE UNIQUE INDEX "officers_ussdPhoneNumber_key" ON "officers"("ussdPhoneNumber");
+
+-- CreateIndex
 CREATE INDEX "officers_badge_idx" ON "officers"("badge");
 
 -- CreateIndex
@@ -301,6 +349,9 @@ CREATE INDEX "officers_stationId_idx" ON "officers"("stationId");
 
 -- CreateIndex
 CREATE INDEX "officers_roleId_idx" ON "officers"("roleId");
+
+-- CreateIndex
+CREATE INDEX "officers_ussdPhoneNumber_idx" ON "officers"("ussdPhoneNumber");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "sessions_sessionToken_key" ON "sessions"("sessionToken");
@@ -468,6 +519,33 @@ CREATE INDEX "sync_queue_status_idx" ON "sync_queue"("status");
 CREATE INDEX "sync_queue_createdAt_idx" ON "sync_queue"("createdAt");
 
 -- CreateIndex
+CREATE INDEX "ussd_query_logs_officerId_idx" ON "ussd_query_logs"("officerId");
+
+-- CreateIndex
+CREATE INDEX "ussd_query_logs_timestamp_idx" ON "ussd_query_logs"("timestamp");
+
+-- CreateIndex
+CREATE INDEX "ussd_query_logs_queryType_idx" ON "ussd_query_logs"("queryType");
+
+-- CreateIndex
+CREATE INDEX "ussd_query_logs_phoneNumber_idx" ON "ussd_query_logs"("phoneNumber");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "vehicles_licensePlate_key" ON "vehicles"("licensePlate");
+
+-- CreateIndex
+CREATE INDEX "vehicles_licensePlate_idx" ON "vehicles"("licensePlate");
+
+-- CreateIndex
+CREATE INDEX "vehicles_status_idx" ON "vehicles"("status");
+
+-- CreateIndex
+CREATE INDEX "vehicles_ownerNIN_idx" ON "vehicles"("ownerNIN");
+
+-- CreateIndex
+CREATE INDEX "vehicles_stationId_idx" ON "vehicles"("stationId");
+
+-- CreateIndex
 CREATE INDEX "_PermissionToRole_B_index" ON "_PermissionToRole"("B");
 
 -- AddForeignKey
@@ -520,6 +598,12 @@ ALTER TABLE "background_checks" ADD CONSTRAINT "background_checks_requestedById_
 
 -- AddForeignKey
 ALTER TABLE "audit_logs" ADD CONSTRAINT "audit_logs_officerId_fkey" FOREIGN KEY ("officerId") REFERENCES "officers"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "ussd_query_logs" ADD CONSTRAINT "ussd_query_logs_officerId_fkey" FOREIGN KEY ("officerId") REFERENCES "officers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "vehicles" ADD CONSTRAINT "vehicles_stationId_fkey" FOREIGN KEY ("stationId") REFERENCES "stations"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "_PermissionToRole" ADD CONSTRAINT "_PermissionToRole_A_fkey" FOREIGN KEY ("A") REFERENCES "permissions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
