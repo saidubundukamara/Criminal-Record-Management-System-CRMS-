@@ -3,92 +3,35 @@
  *
  * Page for registering a new vehicle
  * Pan-African Design: Simple vehicle registration
+ *
+ * STATUS: Phase 7 - Not yet implemented
  */
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useEffect } from "react";
-import { VehicleForm, VehicleFormData } from "@/components/vehicles";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { AlertCircle } from "lucide-react";
 
 export default function NewVehiclePage() {
-  const router = useRouter();
-  const [stations, setStations] = useState<Array<{ id: string; name: string; code: string }>>([]);
-  const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-    async function loadData() {
-      try {
-        const stationsRes = await fetch("/api/stations");
-
-        if (stationsRes.ok) {
-          const stationsData = await stationsRes.json();
-          setStations(stationsData.stations || []);
-        }
-      } catch (error) {
-        console.error("Failed to load data:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    loadData();
-  }, []);
-
-  const handleSubmit = async (data: VehicleFormData) => {
-    const response = await fetch("/api/vehicles", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to register vehicle");
-    }
-  };
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" asChild>
-            <Link href="/dashboard/admin/vehicles">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-3xl font-bold tracking-tight">Register New Vehicle</h1>
-        </div>
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href="/dashboard/admin/vehicles">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Register New Vehicle</h1>
-          <p className="text-muted-foreground">
-            Add a new vehicle to the system
+    <div className="p-6">
+      <div className="max-w-2xl mx-auto mt-12">
+        <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-8 text-center">
+          <AlertCircle className="h-16 w-16 text-yellow-600 mx-auto mb-4" />
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Vehicle Management Not Yet Implemented
+          </h1>
+          <p className="text-gray-600 mb-4">
+            This feature is part of Phase 7 (USSD & Vehicle Management) and is currently under development.
           </p>
+          <div className="mt-6">
+            <a
+              href="/dashboard"
+              className="inline-block px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            >
+              Return to Dashboard
+            </a>
+          </div>
         </div>
       </div>
-
-      {/* Form */}
-      <VehicleForm
-        stations={stations}
-        onSubmit={handleSubmit}
-        mode="create"
-      />
     </div>
   );
 }

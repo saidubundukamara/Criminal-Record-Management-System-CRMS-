@@ -21,7 +21,8 @@ import { IEvidenceRepository } from "@/src/domain/interfaces/repositories/IEvide
 import { IAuditLogRepository } from "@/src/domain/interfaces/repositories/IAuditLogRepository";
 import { IBackgroundCheckRepository } from "@/src/domain/interfaces/repositories/IBackgroundCheckRepository";
 import { IAmberAlertRepository } from "@/src/domain/interfaces/repositories/IAmberAlertRepository";
-import { IVehicleRepository } from "@/src/domain/interfaces/repositories/IVehicleRepository";
+// Phase 7 - Not yet implemented
+// import { IVehicleRepository } from "@/src/domain/interfaces/repositories/IVehicleRepository";
 import { ValidationError } from "@/src/lib/errors";
 
 /**
@@ -169,8 +170,9 @@ export class AnalyticsService {
     private readonly evidenceRepo: IEvidenceRepository,
     private readonly auditRepo: IAuditLogRepository,
     private readonly bgCheckRepo: IBackgroundCheckRepository,
-    private readonly alertRepo: IAmberAlertRepository,
-    private readonly vehicleRepo: IVehicleRepository
+    private readonly alertRepo: IAmberAlertRepository
+    // Phase 7 - vehicleRepo parameter removed until implemented
+    // private readonly vehicleRepo?: IVehicleRepository
   ) {}
 
   /**
@@ -393,8 +395,9 @@ export class AnalyticsService {
     // Get other station resources
     const evidenceItems = await this.evidenceRepo.findAll({ stationId });
     const personRecords = await this.personRepo.findAll({}); // Filter by station if available
-    const vehicleRecordsResult = await this.vehicleRepo.search({ stationId }, { limit: 10000 });
-    const vehicleRecords = vehicleRecordsResult.vehicles;
+    // Phase 7 - Vehicle repo not yet implemented
+    // const vehicleRecordsResult = await this.vehicleRepo.search({ stationId }, { limit: 10000 });
+    const vehicleRecords: any[] = []; // Placeholder until Phase 7
     const backgroundChecks = await this.bgCheckRepo.findAll({}); // Filter by station if available
     const activeAlerts = await this.alertRepo.findActive();
 
@@ -446,8 +449,9 @@ export class AnalyticsService {
     const allCases = await this.caseRepo.findAll({});
     const allPersons = await this.personRepo.findAll({});
     const allEvidence = await this.evidenceRepo.findAll({});
-    const allVehiclesResult = await this.vehicleRepo.search({}, { limit: 10000 });
-    const allVehicles = allVehiclesResult.vehicles;
+    // Phase 7 - Vehicle repo not yet implemented
+    // const allVehiclesResult = await this.vehicleRepo.search({}, { limit: 10000 });
+    const allVehicles: any[] = []; // Placeholder until Phase 7
 
     const wantedPersons = allPersons.filter((p) => p.isWanted).length;
     const activeAlerts = await this.alertRepo.findActive();

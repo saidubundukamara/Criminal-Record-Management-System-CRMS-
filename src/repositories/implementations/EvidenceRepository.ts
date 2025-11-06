@@ -43,12 +43,12 @@ export class EvidenceRepository extends BaseRepository implements IEvidenceRepos
       data.status as EvidenceStatus,
       new Date(data.collectedDate),
       data.collectedLocation,
-      data.collectedBy,
-      data.fileUrl,
+      data.collectedById, // Prisma field name
+      data.storageUrl, // Prisma field name
       data.fileKey,
       data.fileName,
       data.fileSize,
-      data.fileMimeType,
+      data.mimeType, // Prisma field name
       data.fileHash,
       data.storageLocation,
       data.chainOfCustody as CustodyEvent[],
@@ -116,7 +116,7 @@ export class EvidenceRepository extends BaseRepository implements IEvidenceRepos
     }
 
     if (filters.isDigital !== undefined) {
-      where.fileUrl = filters.isDigital ? { not: null } : null;
+      where.storageUrl = filters.isDigital ? { not: null } : null; // Use Prisma field name
     }
 
     if (filters.stationId) {
@@ -215,7 +215,7 @@ export class EvidenceRepository extends BaseRepository implements IEvidenceRepos
    */
   async findByOfficer(officerId: string, limit = 50): Promise<Evidence[]> {
     const data = await this.prisma.evidence.findMany({
-      where: { collectedBy: officerId } as any,
+      where: { collectedById: officerId }, // Use Prisma field name
       take: limit,
       orderBy: {
         collectedDate: "desc",
@@ -344,12 +344,12 @@ export class EvidenceRepository extends BaseRepository implements IEvidenceRepos
         status: dto.status,
         collectedDate: dto.collectedDate,
         collectedLocation: dto.collectedLocation,
-        collectedBy: dto.collectedBy,
-        fileUrl: dto.fileUrl || null,
+        collectedById: dto.collectedBy, // Map to Prisma field name
+        storageUrl: dto.fileUrl || null, // Map to Prisma field name
         fileKey: dto.fileKey || null,
         fileName: dto.fileName || null,
         fileSize: dto.fileSize || null,
-        fileMimeType: dto.fileMimeType || null,
+        mimeType: dto.fileMimeType || null, // Map to Prisma field name
         fileHash: dto.fileHash || null,
         storageLocation: dto.storageLocation || null,
         chainOfCustody: dto.chainOfCustody,
@@ -375,10 +375,10 @@ export class EvidenceRepository extends BaseRepository implements IEvidenceRepos
         ...(dto.type && { type: dto.type }),
         ...(dto.description && { description: dto.description }),
         ...(dto.status && { status: dto.status }),
-        ...(dto.fileUrl !== undefined && { fileUrl: dto.fileUrl }),
+        ...(dto.fileUrl !== undefined && { storageUrl: dto.fileUrl }), // Map to Prisma field name
         ...(dto.fileName !== undefined && { fileName: dto.fileName }),
         ...(dto.fileSize !== undefined && { fileSize: dto.fileSize }),
-        ...(dto.fileMimeType !== undefined && { fileMimeType: dto.fileMimeType }),
+        ...(dto.fileMimeType !== undefined && { mimeType: dto.fileMimeType }), // Map to Prisma field name
         ...(dto.fileHash !== undefined && { fileHash: dto.fileHash }),
         ...(dto.storageLocation !== undefined && { storageLocation: dto.storageLocation }),
         ...(dto.tags && { tags: dto.tags }),
@@ -543,7 +543,7 @@ export class EvidenceRepository extends BaseRepository implements IEvidenceRepos
       this.prisma.evidence.findMany({
         where,
         select: {
-          fileUrl: true,
+          storageUrl: true, // Use Prisma field name
           fileSize: true,
           collectedDate: true,
           status: true,
@@ -554,8 +554,8 @@ export class EvidenceRepository extends BaseRepository implements IEvidenceRepos
     ]);
 
     // Calculate additional stats
-    const digitalCount = allEvidence.filter((e: any) => e.fileUrl !== null).length;
-    const physicalCount = allEvidence.filter((e: any) => e.fileUrl === null).length;
+    const digitalCount = allEvidence.filter((e: any) => e.storageUrl !== null).length;
+    const physicalCount = allEvidence.filter((e: any) => e.storageUrl === null).length;
     const totalFileSize = allEvidence.reduce(
       (sum: number, e: any) => sum + (e.fileSize || 0),
       0

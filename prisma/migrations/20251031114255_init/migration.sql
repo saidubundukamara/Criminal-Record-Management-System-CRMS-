@@ -164,6 +164,15 @@ CREATE TABLE "evidence" (
     "mimeType" TEXT,
     "collectedDate" TIMESTAMP(3) NOT NULL,
     "collectedById" TEXT NOT NULL,
+    "collectedLocation" TEXT,
+    "stationId" TEXT NOT NULL,
+    "storageLocation" TEXT,
+    "isSealed" BOOLEAN NOT NULL DEFAULT false,
+    "sealedAt" TIMESTAMP(3),
+    "sealedBy" TEXT,
+    "tags" TEXT[] NOT NULL DEFAULT ARRAY[]::TEXT[],
+    "status" TEXT NOT NULL DEFAULT 'collected',
+    "notes" TEXT,
     "chainOfCustody" JSONB NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
@@ -402,6 +411,12 @@ CREATE INDEX "evidence_qrCode_idx" ON "evidence"("qrCode");
 CREATE INDEX "evidence_collectedById_idx" ON "evidence"("collectedById");
 
 -- CreateIndex
+CREATE INDEX "evidence_stationId_idx" ON "evidence"("stationId");
+
+-- CreateIndex
+CREATE INDEX "evidence_status_idx" ON "evidence"("status");
+
+-- CreateIndex
 CREATE INDEX "amber_alerts_status_idx" ON "amber_alerts"("status");
 
 -- CreateIndex
@@ -487,6 +502,9 @@ ALTER TABLE "evidence" ADD CONSTRAINT "evidence_caseId_fkey" FOREIGN KEY ("caseI
 
 -- AddForeignKey
 ALTER TABLE "evidence" ADD CONSTRAINT "evidence_collectedById_fkey" FOREIGN KEY ("collectedById") REFERENCES "officers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "evidence" ADD CONSTRAINT "evidence_stationId_fkey" FOREIGN KEY ("stationId") REFERENCES "stations"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "amber_alerts" ADD CONSTRAINT "amber_alerts_createdById_fkey" FOREIGN KEY ("createdById") REFERENCES "officers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;

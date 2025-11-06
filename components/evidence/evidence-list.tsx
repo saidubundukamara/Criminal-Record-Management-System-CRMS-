@@ -69,7 +69,7 @@ export function EvidenceList({ evidence, showFilters = true }: EvidenceListProps
     const matchesSearch =
       e.qrCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
       e.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      e.tags.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      (e.tags?.some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase())) ?? false);
 
     const matchesType = typeFilter === "all" || e.type === typeFilter;
 
@@ -188,7 +188,7 @@ export function EvidenceList({ evidence, showFilters = true }: EvidenceListProps
                   <TableCell>
                     <div className="max-w-xs">
                       <p className="font-medium truncate">{item.description}</p>
-                      {item.tags.length > 0 && (
+                      {item.tags && item.tags.length > 0 && (
                         <div className="flex gap-1 mt-1 flex-wrap">
                           {item.tags.slice(0, 3).map((tag) => (
                             <Badge
