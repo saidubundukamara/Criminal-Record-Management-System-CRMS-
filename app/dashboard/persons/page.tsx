@@ -23,18 +23,14 @@ async function getPersons() {
   }
 
   try {
-    const prisma = container.prismaClient;
-    const persons = await prisma.person.findMany({
-      take: 500,
-      orderBy: { createdAt: 'desc' },
-      where: {
-        createdBy: {
-          stationId: session.user.stationId,
-        },
-      },
-    });
+    const { persons } = await container.personService.searchPersons(
+      { stationId: session.user.stationId },
+      session.user.id,
+      500,
+      0
+    );
 
-    return persons as any[];
+    return persons;
   } catch (error) {
     console.error("Error fetching persons:", error);
     return [];
@@ -59,11 +55,17 @@ export default async function PersonsPage() {
 
   const persons = await getPersons();
 
+  // Serialize Person entities to plain objects for client components
+  const serializedPersons = persons.map((p) => p.toJSON());
+
   // Calculate statistics
-  const wantedCount = persons.filter((p: any) => p.isWanted).length;
-  const highRiskCount = persons.filter((p: any) => p.riskLevel === "high").length;
-  const withBiometricsCount = persons.filter((p: any) => p.hasFingerprints).length;
-  const minorsCount = persons.filter((p: any) => p.age && p.age < 18).length;
+  const wantedCount = persons.filter((p) => p.isWanted).length;
+  const highRiskCount = persons.filter((p) => p.riskLevel === "high").length;
+  const withBiometricsCount = persons.filter((p) => p.hasBiometricData()).length;
+  const minorsCount = persons.filter((p) => {
+    const age = p.getAge();
+    return age !== null && age < 18;
+  }).length;
 
   return (
     <div className="space-y-6">
@@ -152,7 +154,7 @@ export default async function PersonsPage() {
 
       {/* Persons List */}
       <Suspense fallback={<PersonsListSkeleton />}>
-        <PersonList persons={persons} showFilters={true} />
+        <PersonList persons={serializedPersons} showFilters={true} />
       </Suspense>
     </div>
   );

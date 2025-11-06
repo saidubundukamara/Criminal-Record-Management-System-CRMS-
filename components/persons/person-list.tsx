@@ -46,7 +46,7 @@ interface Person {
   riskLevel: "low" | "medium" | "high" | null;
   isWanted: boolean;
   isDeceasedOrMissing: boolean;
-  hasFingerprints: boolean;
+  hasBiometrics: boolean;
   photoUrl: string | null;
   createdAt: Date;
 }
@@ -201,7 +201,7 @@ export function PersonList({ persons, showFilters = true }: PersonListProps) {
                   </TableCell>
                   <TableCell>
                     <div className="text-sm">
-                      {person.age ? (
+                      {person.age !== null ? (
                         <p className="font-medium">{person.age} years</p>
                       ) : (
                         <p className="text-gray-400">Age unknown</p>
@@ -238,7 +238,7 @@ export function PersonList({ persons, showFilters = true }: PersonListProps) {
                   </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
-                      {person.hasFingerprints && (
+                      {person.hasBiometrics && (
                         <div title="Has biometrics">
                           <Fingerprint className="h-4 w-4 text-blue-600" />
                         </div>

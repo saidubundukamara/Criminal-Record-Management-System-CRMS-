@@ -326,4 +326,56 @@ export class Person {
       // All other fields redacted
     };
   }
+
+  /**
+   * Serialize Person entity to plain object for React Server Components
+   * This method is automatically called when passing to client components
+   */
+  toJSON() {
+    return {
+      id: this.id,
+      nin: this.nin,
+      firstName: this.firstName,
+      lastName: this.lastName,
+      middleName: this.middleName,
+      alias: this.alias,
+      dateOfBirth: this.dateOfBirth,
+      gender: this.gender,
+      nationality: this.nationality,
+      placeOfBirth: this.placeOfBirth,
+      occupation: this.occupation,
+      maritalStatus: this.maritalStatus,
+      educationLevel: this.educationLevel,
+      tribe: this.tribe,
+      religion: this.religion,
+      languagesSpoken: this.languagesSpoken,
+      physicalDescription: this.physicalDescription,
+      photoUrl: this.photoUrl,
+      addresses: this.addresses,
+      phoneNumbers: this.phoneNumbers,
+      emails: this.emails,
+      fingerprintHash: this.fingerprintHash,
+      biometricHash: this.biometricHash,
+      criminalHistory: this.criminalHistory,
+      riskLevel: this.riskLevel,
+      isWanted: this.isWanted,
+      isDeceasedOrMissing: this.isDeceasedOrMissing,
+      notes: this.notes,
+      stationId: this.stationId,
+      createdBy: this.createdBy,
+      updatedBy: this.updatedBy,
+      createdAt: this.createdAt,
+      updatedAt: this.updatedAt,
+      // Pre-computed values for client components
+      fullName: this.getFullName(),
+      displayName: this.getDisplayName(),
+      age: this.getAge(),
+      hasBiometrics: this.hasBiometricData(),
+      hasCompleteId: this.hasCompleteIdentification(),
+      primaryAddress: this.getPrimaryAddress(),
+      primaryPhone: this.getPrimaryPhone(),
+      primaryEmail: this.getPrimaryEmail(),
+      dataCompleteness: this.getDataCompletenessPercentage(),
+    };
+  }
 }

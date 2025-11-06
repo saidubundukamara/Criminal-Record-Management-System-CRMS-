@@ -15,6 +15,7 @@ import {
   PersonStatistics,
 } from "@/src/domain/interfaces/repositories/IPersonRepository";
 import { Person, Gender, EncryptedAddress, PersonType } from "@/src/domain/entities/Person";
+import { encryptPII, decryptPII } from "@/src/lib/encryption";
 import { Prisma } from "@prisma/client";
 
 /**
@@ -27,41 +28,115 @@ type PrismaPersonWithRelations = any;
  */
 export class PersonRepository extends BaseRepository implements IPersonRepository {
   /**
+   * Safely decrypt and parse PII field with error handling
+   * Returns default value if decryption or parsing fails
+   *
+   * Handles both formats:
+   * - JSON arrays: ["value1", "value2"] or [{"field": "value"}]
+   * - Legacy plain strings: "value" (converted to ["value"] for string arrays)
+   */
+  private safeDecryptAndParse<T>(
+    encryptedValue: string | null | undefined,
+    defaultValue: T,
+    personId?: string,
+    fieldName?: string
+  ): T {
+    if (!encryptedValue) {
+      return defaultValue;
+    }
+
+    try {
+      const decrypted = decryptPII(encryptedValue);
+      if (!decrypted) {
+        return defaultValue;
+      }
+
+      // Try to parse as JSON first
+      try {
+        return JSON.parse(decrypted) as T;
+      } catch (jsonError) {
+        // If JSON parsing fails, check if we're dealing with legacy plain-text data
+        // For string arrays (phone, email), wrap the plain string in an array
+        if (Array.isArray(defaultValue)) {
+          // If default is an empty array and decrypted is a non-empty string,
+          // treat it as a legacy plain-text value
+          if (typeof decrypted === 'string' && decrypted.trim()) {
+            console.warn(
+              `[PersonRepository] Converting legacy plain-text ${fieldName || "PII field"} for person ${personId || "unknown"} to array format`
+            );
+            return [decrypted] as T;
+          }
+        }
+
+        // If we can't handle the format, throw the original error
+        throw jsonError;
+      }
+    } catch (error) {
+      // Log error for debugging but don't crash the application
+      console.error(
+        `[PersonRepository] Failed to decrypt/parse ${fieldName || "PII field"} for person ${personId || "unknown"}:`,
+        error instanceof Error ? error.message : error
+      );
+      return defaultValue;
+    }
+  }
+
+  /**
    * Map Prisma Person to domain entity
    */
   private toDomain(data: any): Person {
+    // Safely decrypt and parse encrypted PII fields with error handling
+    const addresses: EncryptedAddress[] = this.safeDecryptAndParse(
+      data.addressEncrypted,
+      [],
+      data.id,
+      "addressEncrypted"
+    );
+    const phoneNumbers: string[] = this.safeDecryptAndParse(
+      data.phoneEncrypted,
+      [],
+      data.id,
+      "phoneEncrypted"
+    );
+    const emails: string[] = this.safeDecryptAndParse(
+      data.emailEncrypted,
+      [],
+      data.id,
+      "emailEncrypted"
+    );
+
     return new Person(
       data.id,
-      data.nin,
+      data.nationalId, // Prisma: nationalId -> Domain: nin
       data.firstName,
       data.lastName,
       data.middleName,
-      data.aliases as string[],
-      data.dateOfBirth ? new Date(data.dateOfBirth) : null,
+      data.aliases as string[], // Prisma: aliases (plural)
+      data.dob ? new Date(data.dob) : null, // Prisma: dob -> Domain: dateOfBirth
       data.gender as Gender,
       data.nationality,
-      data.placeOfBirth,
-      data.occupation,
-      data.maritalStatus,
-      data.educationLevel,
-      data.tribe,
-      data.religion,
-      data.languagesSpoken as string[],
-      data.physicalDescription,
+      null, // placeOfBirth - not in current schema
+      null, // occupation - not in current schema
+      null, // maritalStatus - not in current schema
+      null, // educationLevel - not in current schema
+      null, // tribe - not in current schema
+      null, // religion - not in current schema
+      [], // languagesSpoken - not in current schema
+      null, // physicalDescription - not in current schema
       data.photoUrl,
-      data.addresses as EncryptedAddress[],
-      data.phoneNumbers as string[],
-      data.emails as string[],
+      addresses, // Parsed from addressEncrypted
+      phoneNumbers, // Parsed from phoneEncrypted
+      emails, // Parsed from emailEncrypted
       data.fingerprintHash,
       data.biometricHash,
-      data.criminalHistory,
+      null, // criminalHistory - not in current schema
       data.riskLevel as "low" | "medium" | "high" | null,
       data.isWanted,
       data.isDeceasedOrMissing,
-      data.notes,
-      data.stationId,
-      data.createdBy,
-      data.updatedBy,
+      null, // notes - not in current schema
+      "", // stationId - not on Person in schema, but domain entity expects it
+      data.createdById, // Prisma: createdById -> Domain: createdBy
+      null, // updatedBy - not in current schema
       new Date(data.createdAt),
       new Date(data.updatedAt)
     );
@@ -101,13 +176,13 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
         { firstName: { contains: filters.search, mode: "insensitive" } },
         { lastName: { contains: filters.search, mode: "insensitive" } },
         { middleName: { contains: filters.search, mode: "insensitive" } },
-        { nin: { contains: filters.search, mode: "insensitive" } },
+        { nationalId: { contains: filters.search, mode: "insensitive" } },
         { aliases: { has: filters.search } },
       ];
     }
 
     if (filters.nin) {
-      where.nin = filters.nin;
+      where.nationalId = filters.nin;
     }
 
     if (filters.gender) {
@@ -131,7 +206,9 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
     }
 
     if (filters.stationId) {
-      where.stationId = filters.stationId;
+      where.createdBy = {
+        stationId: filters.stationId,
+      };
     }
 
     if (filters.tribe) {
@@ -147,7 +224,7 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
     }
 
     if (filters.createdBy) {
-      where.createdBy = filters.createdBy;
+      where.createdById = filters.createdBy;
     }
 
     if (filters.createdAfter) {
@@ -168,7 +245,7 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
           today.getMonth(),
           today.getDate()
         );
-        where.dateOfBirth = { lte: maxDob };
+        where.dob = { lte: maxDob };
       }
 
       if (filters.ageMax !== undefined) {
@@ -177,7 +254,7 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
           today.getMonth(),
           today.getDate()
         );
-        where.dateOfBirth = { ...where.dateOfBirth, gte: minDob };
+        where.dob = { ...where.dob, gte: minDob };
       }
     }
 
@@ -200,7 +277,7 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
    */
   async findByNIN(nin: string): Promise<Person | null> {
     const data = await this.prisma.person.findUnique({
-      where: { nin } as any,
+      where: { nationalId: nin },
     });
 
     return data ? this.toDomain(data) : null;
@@ -314,7 +391,9 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
     };
 
     if (stationId) {
-      where.stationId = stationId;
+      where.createdBy = {
+        stationId: stationId,
+      };
     }
 
     const data = await this.prisma.person.findMany({
@@ -338,7 +417,9 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
     };
 
     if (stationId) {
-      where.stationId = stationId;
+      where.createdBy = {
+        stationId: stationId,
+      };
     }
 
     const data = await this.prisma.person.findMany({
@@ -357,36 +438,35 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
   async create(dto: CreatePersonDto): Promise<Person> {
     const data = await this.prisma.person.create({
       data: {
-        nin: dto.nin || null,
+        nationalId: dto.nin || null,
+        countryCode: "SLE", // Default to Sierra Leone (can be made configurable)
         firstName: dto.firstName,
         lastName: dto.lastName,
         middleName: dto.middleName || null,
         aliases: dto.alias || [],
-        dateOfBirth: dto.dateOfBirth || null,
+        dob: dto.dateOfBirth || null,
         gender: dto.gender,
-        nationality: dto.nationality || null,
-        placeOfBirth: dto.placeOfBirth || null,
-        occupation: dto.occupation || null,
-        maritalStatus: dto.maritalStatus || null,
-        educationLevel: dto.educationLevel || null,
-        tribe: dto.tribe || null,
-        religion: dto.religion || null,
-        languagesSpoken: dto.languagesSpoken || [],
-        physicalDescription: dto.physicalDescription || null,
+        nationality: dto.nationality || "SLE", // Default to Sierra Leone
+        addressEncrypted:
+          dto.addresses && dto.addresses.length > 0
+            ? encryptPII(JSON.stringify(dto.addresses))
+            : null,
+        phoneEncrypted:
+          dto.phoneNumbers && dto.phoneNumbers.length > 0
+            ? encryptPII(JSON.stringify(dto.phoneNumbers))
+            : null,
+        emailEncrypted:
+          dto.emails && dto.emails.length > 0
+            ? encryptPII(JSON.stringify(dto.emails))
+            : null,
         photoUrl: dto.photoUrl || null,
-        addresses: dto.addresses || [],
-        phoneNumbers: dto.phoneNumbers || [],
-        emails: dto.emails || [],
         fingerprintHash: dto.fingerprintHash || null,
         biometricHash: dto.biometricHash || null,
-        criminalHistory: dto.criminalHistory || null,
         riskLevel: dto.riskLevel || null,
         isWanted: dto.isWanted || false,
         isDeceasedOrMissing: dto.isDeceasedOrMissing || false,
-        notes: dto.notes || null,
-        stationId: dto.stationId,
-        createdBy: dto.createdBy,
-      } as any,
+        createdById: dto.createdBy,
+      },
     });
 
     return this.toDomain(data);
@@ -396,42 +476,36 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
    * Update an existing person
    */
   async update(id: string, dto: UpdatePersonDto): Promise<Person> {
+    const updateData: any = {};
+
+    // Map DTO fields to Prisma schema fields
+    if (dto.nin !== undefined) updateData.nationalId = dto.nin;
+    if (dto.firstName) updateData.firstName = dto.firstName;
+    if (dto.lastName) updateData.lastName = dto.lastName;
+    if (dto.middleName !== undefined) updateData.middleName = dto.middleName;
+    if (dto.alias) updateData.aliases = dto.alias;
+    if (dto.dateOfBirth !== undefined) updateData.dob = dto.dateOfBirth;
+    if (dto.gender) updateData.gender = dto.gender;
+    if (dto.nationality !== undefined) updateData.nationality = dto.nationality;
+    if (dto.photoUrl !== undefined) updateData.photoUrl = dto.photoUrl;
+    if (dto.addresses)
+      updateData.addressEncrypted = encryptPII(JSON.stringify(dto.addresses));
+    if (dto.phoneNumbers)
+      updateData.phoneEncrypted = encryptPII(JSON.stringify(dto.phoneNumbers));
+    if (dto.emails)
+      updateData.emailEncrypted = encryptPII(JSON.stringify(dto.emails));
+    if (dto.fingerprintHash !== undefined)
+      updateData.fingerprintHash = dto.fingerprintHash;
+    if (dto.biometricHash !== undefined)
+      updateData.biometricHash = dto.biometricHash;
+    if (dto.riskLevel !== undefined) updateData.riskLevel = dto.riskLevel;
+    if (dto.isWanted !== undefined) updateData.isWanted = dto.isWanted;
+    if (dto.isDeceasedOrMissing !== undefined)
+      updateData.isDeceasedOrMissing = dto.isDeceasedOrMissing;
+
     const data = await this.prisma.person.update({
       where: { id },
-      data: {
-        ...(dto.nin !== undefined && { nin: dto.nin }),
-        ...(dto.firstName && { firstName: dto.firstName }),
-        ...(dto.lastName && { lastName: dto.lastName }),
-        ...(dto.middleName !== undefined && { middleName: dto.middleName }),
-        ...(dto.alias && { aliases: dto.alias }),
-        ...(dto.dateOfBirth !== undefined && { dateOfBirth: dto.dateOfBirth }),
-        ...(dto.gender && { gender: dto.gender }),
-        ...(dto.nationality !== undefined && { nationality: dto.nationality }),
-        ...(dto.placeOfBirth !== undefined && { placeOfBirth: dto.placeOfBirth }),
-        ...(dto.occupation !== undefined && { occupation: dto.occupation }),
-        ...(dto.maritalStatus !== undefined && { maritalStatus: dto.maritalStatus }),
-        ...(dto.educationLevel !== undefined && { educationLevel: dto.educationLevel }),
-        ...(dto.tribe !== undefined && { tribe: dto.tribe }),
-        ...(dto.religion !== undefined && { religion: dto.religion }),
-        ...(dto.languagesSpoken && { languagesSpoken: dto.languagesSpoken }),
-        ...(dto.physicalDescription !== undefined && {
-          physicalDescription: dto.physicalDescription,
-        }),
-        ...(dto.photoUrl !== undefined && { photoUrl: dto.photoUrl }),
-        ...(dto.addresses && { addresses: dto.addresses }),
-        ...(dto.phoneNumbers && { phoneNumbers: dto.phoneNumbers }),
-        ...(dto.emails && { emails: dto.emails }),
-        ...(dto.fingerprintHash !== undefined && { fingerprintHash: dto.fingerprintHash }),
-        ...(dto.biometricHash !== undefined && { biometricHash: dto.biometricHash }),
-        ...(dto.criminalHistory !== undefined && { criminalHistory: dto.criminalHistory }),
-        ...(dto.riskLevel !== undefined && { riskLevel: dto.riskLevel }),
-        ...(dto.isWanted !== undefined && { isWanted: dto.isWanted }),
-        ...(dto.isDeceasedOrMissing !== undefined && {
-          isDeceasedOrMissing: dto.isDeceasedOrMissing,
-        }),
-        ...(dto.notes !== undefined && { notes: dto.notes }),
-        updatedBy: dto.updatedBy,
-      } as any,
+      data: updateData,
     });
 
     return this.toDomain(data);
@@ -454,8 +528,8 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
       where: { id },
       data: {
         isWanted: true,
-        updatedBy,
-      } as any,
+        wantedSince: new Date(),
+      },
     });
 
     return this.toDomain(data);
@@ -471,8 +545,7 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
         isDeceasedOrMissing: true,
         isWanted: false, // Cannot be wanted if deceased/missing
         wantedSince: null,
-        updatedBy,
-      } as any,
+      },
     });
 
     return this.toDomain(data);
@@ -492,8 +565,7 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
       data: {
         isWanted,
         wantedSince: isWanted ? new Date() : null,
-        updatedBy,
-      } as any,
+      },
     });
 
     return this.toDomain(data);
@@ -511,8 +583,7 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
       where: { id },
       data: {
         riskLevel,
-        updatedBy,
-      } as any,
+      },
     });
 
     return this.toDomain(data);
@@ -536,8 +607,7 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
       where: { id },
       data: {
         aliases: [...currentAliases, alias],
-        updatedBy,
-      } as any,
+      },
     });
 
     return this.toDomain(data);
@@ -559,8 +629,7 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
       where: { id },
       data: {
         aliases: newAliases,
-        updatedBy,
-      } as any,
+      },
     });
 
     return this.toDomain(data);
@@ -578,7 +647,13 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
    * Get person statistics
    */
   async getStatistics(stationId?: string): Promise<PersonStatistics> {
-    const where: any = stationId ? { stationId } : {};
+    const where: any = stationId
+      ? {
+          createdBy: {
+            stationId: stationId,
+          },
+        }
+      : {};
 
     const [
       total,
@@ -608,12 +683,12 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
       this.prisma.person.findMany({
         where,
         select: {
-          dateOfBirth: true,
-          nin: true,
+          dob: true,
+          nationalId: true,
           nationality: true,
-          addresses: true,
+          addressEncrypted: true,
         },
-      } as any),
+      }),
     ]);
 
     // Calculate minors and complete ID records
@@ -622,8 +697,8 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
     let withCompleteId = 0;
 
     allPersons.forEach((person: any) => {
-      if (person.dateOfBirth) {
-        const birthDate = new Date(person.dateOfBirth);
+      if (person.dob) {
+        const birthDate = new Date(person.dob);
         const age = today.getFullYear() - birthDate.getFullYear();
         if (age < 18) {
           minors++;
@@ -631,10 +706,10 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
       }
 
       if (
-        person.nin &&
-        person.dateOfBirth &&
+        person.nationalId &&
+        person.dob &&
         person.nationality &&
-        (person.addresses as any[]).length > 0
+        person.addressEncrypted
       ) {
         withCompleteId++;
       }
@@ -666,7 +741,7 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
    */
   async existsByNIN(nin: string): Promise<boolean> {
     const count = await this.prisma.person.count({
-      where: { nin } as any,
+      where: { nationalId: nin },
     });
     return count > 0;
   }
@@ -676,7 +751,7 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
    */
   async findByCreator(officerId: string, limit = 50): Promise<Person[]> {
     const data = await this.prisma.person.findMany({
-      where: { createdBy: officerId } as any,
+      where: { createdById: officerId },
       take: limit,
       orderBy: {
         createdAt: "desc",
@@ -690,7 +765,13 @@ export class PersonRepository extends BaseRepository implements IPersonRepositor
    * Get recently updated persons
    */
   async getRecentlyUpdated(stationId?: string, limit = 20): Promise<Person[]> {
-    const where: any = stationId ? { stationId } : {};
+    const where: any = stationId
+      ? {
+          createdBy: {
+            stationId: stationId,
+          },
+        }
+      : {};
 
     const data = await this.prisma.person.findMany({
       where,
