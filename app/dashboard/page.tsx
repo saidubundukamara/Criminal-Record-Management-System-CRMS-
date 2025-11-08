@@ -321,7 +321,7 @@ export default async function DashboardPage() {
       <div>
         <h2 className="text-xl font-semibold text-gray-900 mb-4">Analytics Dashboards</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Link href="/analytics/officers">
+          <Link href="/dashboard/analytics/officers">
             <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary">
               <div className="flex items-start gap-4">
                 <div className="rounded-lg bg-blue-500/10 p-3">
@@ -335,7 +335,7 @@ export default async function DashboardPage() {
             </Card>
           </Link>
 
-          <Link href="/analytics/cases">
+          <Link href="/dashboard/analytics/cases">
             <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary">
               <div className="flex items-start gap-4">
                 <div className="rounded-lg bg-green-500/10 p-3">
@@ -349,7 +349,7 @@ export default async function DashboardPage() {
             </Card>
           </Link>
 
-          <Link href="/analytics/stations">
+          <Link href="/dashboard/analytics/stations">
             <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary">
               <div className="flex items-start gap-4">
                 <div className="rounded-lg bg-purple-500/10 p-3">
@@ -364,7 +364,7 @@ export default async function DashboardPage() {
           </Link>
 
           {session.user.roleName === "SuperAdmin" || session.user.roleName === "Admin" ? (
-            <Link href="/analytics/national">
+            <Link href="/dashboard/analytics/national">
               <Card className="p-6 hover:shadow-lg transition-shadow cursor-pointer border-2 hover:border-primary">
                 <div className="flex items-start gap-4">
                   <div className="rounded-lg bg-orange-500/10 p-3">

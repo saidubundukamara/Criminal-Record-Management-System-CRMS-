@@ -14,13 +14,34 @@
 import { redirect } from "next/navigation";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { prisma } from "@/src/lib/prisma";
 import { hasPermission } from "@/lib/permissions";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Phone, Activity, Users, TrendingUp, Eye } from "lucide-react";
+import { format } from "date-fns";
 
 export const metadata = {
   title: "USSD Officer Management | CRMS",
   description: "Manage USSD access for field officers",
 };
+
+async function getUSSDOfficers() {
+  try {
+    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/ussd-officers`, {
+      cache: 'no-store',
+    });
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return data.officers || [];
+  } catch (error) {
+    console.error("Error fetching USSD officers:", error);
+    return [];
+  }
+}
 
 export default async function USSDOfficersPage() {
   // Authentication check
@@ -38,330 +59,151 @@ export default async function USSDOfficersPage() {
     redirect("/dashboard");
   }
 
-  // Fetch officers with USSD data
-  const officers = await prisma.officer.findMany({
-    where: { active: true },
-    include: {
-      role: { select: { name: true, level: true } },
-      station: { select: { code: true, name: true } },
-      _count: {
-        select: { ussdQueries: true },
-      },
-    },
-    orderBy: [
-      { ussdRegisteredAt: { sort: "desc", nulls: "last" } },
-      { name: "asc" },
-    ],
-  });
-
-  // Fetch recent USSD query logs
-  const recentLogs = await prisma.uSSDQueryLog.findMany({
-    take: 50,
-    include: {
-      officer: {
-        select: {
-          badge: true,
-          name: true,
-          station: { select: { code: true } },
-        },
-      },
-    },
-    orderBy: { timestamp: "desc" },
-  });
+  const officers = await getUSSDOfficers();
 
   // Calculate statistics
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const weekStart = new Date(now);
-  weekStart.setDate(weekStart.getDate() - 7);
-
-  const [
-    totalRegistered,
-    enabledCount,
-    queriesToday,
-    queriesThisWeek,
-    totalQueries,
-  ] = await Promise.all([
-    prisma.officer.count({
-      where: {
-        ussdPhoneNumber: { not: null },
-      },
-    }),
-    prisma.officer.count({
-      where: {
-        ussdEnabled: true,
-      },
-    }),
-    prisma.uSSDQueryLog.count({
-      where: { timestamp: { gte: today } },
-    }),
-    prisma.uSSDQueryLog.count({
-      where: { timestamp: { gte: weekStart } },
-    }),
-    prisma.uSSDQueryLog.count(),
-  ]);
-
   const stats = {
-    totalRegistered,
-    enabledCount,
-    queriesToday,
-    queriesThisWeek,
-    totalQueries,
+    total: officers.length,
+    enabled: officers.filter((o: any) => o.enabled).length,
+    disabled: officers.filter((o: any) => !o.enabled).length,
+    totalQueries: officers.reduce((sum: number, o: any) => sum + (o.totalQueries || 0), 0),
   };
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">USSD Officer Management</h1>
-        <p className="text-gray-600 mt-2">
-          Manage USSD field access for officers
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight">USSD Officer Management</h1>
+        <p className="text-muted-foreground mt-2">
+          Manage field officer access to USSD services for low-connectivity scenarios
         </p>
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-        <StatCard
-          title="Registered Officers"
-          value={stats.totalRegistered}
-          subtitle={`${stats.enabledCount} enabled`}
-        />
-        <StatCard
-          title="Queries Today"
-          value={stats.queriesToday}
-          subtitle="All officers"
-        />
-        <StatCard
-          title="Queries This Week"
-          value={stats.queriesThisWeek}
-          subtitle="Last 7 days"
-        />
-        <StatCard
-          title="Total Queries"
-          value={stats.totalQueries}
-          subtitle="All time"
-        />
-        <StatCard
-          title="Avg Per Officer"
-          value={
-            stats.totalRegistered > 0
-              ? Math.round(stats.totalQueries / stats.totalRegistered)
-              : 0
-          }
-          subtitle="Lifetime average"
-        />
+      <div className="grid gap-4 md:grid-cols-4">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Registered Officers</CardTitle>
+            <Users className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.total}</div>
+            <p className="text-xs text-muted-foreground">Total USSD registrations</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Enabled</CardTitle>
+            <Phone className="h-4 w-4 text-green-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.enabled}</div>
+            <p className="text-xs text-muted-foreground">Active USSD access</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Disabled</CardTitle>
+            <Phone className="h-4 w-4 text-red-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.disabled}</div>
+            <p className="text-xs text-muted-foreground">Suspended access</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">Total Queries</CardTitle>
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.totalQueries}</div>
+            <p className="text-xs text-muted-foreground">All-time USSD queries</p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Officers Table */}
-      <div className="bg-white rounded-lg shadow mb-8">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-semibold">Officers</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            {officers.length} active officers
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Badge
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Name
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Station
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Phone
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Status
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Queries
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Last Used
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Actions
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {officers.map((officer) => (
-                <OfficerRow key={officer.id} officer={officer} />
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Recent Query Logs */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="p-6 border-b">
-          <h2 className="text-xl font-semibold">Recent USSD Queries</h2>
-          <p className="text-sm text-gray-600 mt-1">
-            Last 50 queries from all officers
-          </p>
-        </div>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b">
-              <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Time
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Officer
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Type
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Search Term
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Result
-                </th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">
-                  Status
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y">
-              {recentLogs.map((log) => (
-                <tr key={log.id} className="hover:bg-gray-50">
-                  <td className="px-6 py-4 text-sm">
-                    {new Date(log.timestamp).toLocaleString()}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <div>{log.officer.badge}</div>
-                    <div className="text-xs text-gray-500">
-                      {log.officer.station.code}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <span className="px-2 py-1 text-xs rounded bg-blue-100 text-blue-800">
-                      {log.queryType}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-sm font-mono">
-                    {log.searchTerm}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    {log.resultSummary || "-"}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    {log.success ? (
-                      <span className="text-green-600">✓</span>
-                    ) : (
-                      <span className="text-red-600">✗</span>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Statistics Card Component
- */
-function StatCard({
-  title,
-  value,
-  subtitle,
-}: {
-  title: string;
-  value: number | string;
-  subtitle: string;
-}) {
-  return (
-    <div className="bg-white rounded-lg shadow p-6">
-      <div className="text-sm text-gray-600 mb-1">{title}</div>
-      <div className="text-3xl font-bold mb-1">{value}</div>
-      <div className="text-xs text-gray-500">{subtitle}</div>
-    </div>
-  );
-}
-
-/**
- * Officer Row Component (Client-side for interactivity)
- */
-function OfficerRow({ officer }: { officer: any }) {
-  const isRegistered = !!officer.ussdPhoneNumber;
-  const isEnabled = officer.ussdEnabled;
-  const queryCount = officer._count.ussdQueries;
-
-  return (
-    <tr className="hover:bg-gray-50">
-      <td className="px-6 py-4 text-sm font-medium">{officer.badge}</td>
-      <td className="px-6 py-4 text-sm">{officer.name}</td>
-      <td className="px-6 py-4 text-sm">
-        <div>{officer.station.name}</div>
-        <div className="text-xs text-gray-500">{officer.station.code}</div>
-      </td>
-      <td className="px-6 py-4 text-sm font-mono">
-        {officer.ussdPhoneNumber || (
-          <span className="text-gray-400">Not registered</span>
-        )}
-      </td>
-      <td className="px-6 py-4 text-sm">
-        {isRegistered ? (
-          isEnabled ? (
-            <span className="px-2 py-1 text-xs rounded bg-green-100 text-green-800">
-              Enabled
-            </span>
+      <Card>
+        <CardHeader>
+          <CardTitle>USSD-Registered Officers</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {officers.length === 0 ? (
+            <div className="text-center py-12 text-muted-foreground">
+              <Phone className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">No USSD registrations yet</p>
+              <p className="text-sm mt-2">Officers can register by dialing the USSD shortcode from their phone</p>
+            </div>
           ) : (
-            <span className="px-2 py-1 text-xs rounded bg-red-100 text-red-800">
-              Disabled
-            </span>
-          )
-        ) : (
-          <span className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-600">
-            Not Registered
-            </span>
-        )}
-      </td>
-      <td className="px-6 py-4 text-sm">
-        <span className="font-medium">{queryCount}</span>
-        <span className="text-xs text-gray-500 ml-1">
-          / {officer.ussdDailyLimit} daily
-        </span>
-      </td>
-      <td className="px-6 py-4 text-sm text-gray-500">
-        {officer.ussdLastUsed
-          ? new Date(officer.ussdLastUsed).toLocaleDateString()
-          : "-"}
-      </td>
-      <td className="px-6 py-4 text-sm">
-        {isRegistered && (
-          <div className="flex gap-2">
-            <button
-              className={`px-3 py-1 text-xs rounded ${
-                isEnabled
-                  ? "bg-red-100 text-red-700 hover:bg-red-200"
-                  : "bg-green-100 text-green-700 hover:bg-green-200"
-              }`}
-              title={isEnabled ? "Disable USSD" : "Enable USSD"}
-            >
-              {isEnabled ? "Disable" : "Enable"}
-            </button>
-            <button
-              className="px-3 py-1 text-xs rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
-              title="View Logs"
-            >
-              Logs
-            </button>
-          </div>
-        )}
-      </td>
-    </tr>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="border-b">
+                  <tr>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Officer</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Station</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Queries</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Used</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {officers.map((officer: any) => (
+                    <tr key={officer.id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3">
+                        <div>
+                          <div className="font-medium">{officer.name}</div>
+                          <div className="text-sm text-muted-foreground font-mono">{officer.badge}</div>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm font-mono">{officer.phoneNumber}</td>
+                      <td className="px-4 py-3 text-sm">{officer.station.name}</td>
+                      <td className="px-4 py-3">
+                        <Badge variant={officer.enabled ? "default" : "secondary"}>
+                          {officer.enabled ? "Enabled" : "Disabled"}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
+                        <div className="flex items-center gap-1">
+                          <Activity className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-sm">{officer.totalQueries}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 text-sm">
+                        {officer.lastUsed ? format(new Date(officer.lastUsed), "MMM d, yyyy") : "Never"}
+                      </td>
+                      <td className="px-4 py-3">
+                        <Button variant="ghost" size="sm" asChild>
+                          <Link href={`/dashboard/admin/ussd-officers/${officer.id}`}>
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Link>
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Info Box */}
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <h3 className="font-semibold text-blue-900 mb-2">About USSD Access</h3>
+        <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
+          <li>Officers self-register by dialing the USSD shortcode from their phone</li>
+          <li>Admins can enable/disable access and reset Quick PINs</li>
+          <li>USSD allows field officers to check records without internet connectivity</li>
+          <li>All USSD queries are logged and rate-limited for security</li>
+        </ul>
+      </div>
+    </div>
   );
 }

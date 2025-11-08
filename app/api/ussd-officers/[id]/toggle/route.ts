@@ -1,104 +1,110 @@
 /**
- * USSD Officer Toggle API Route
+ * USSD Officer Toggle API
  *
- * Endpoint:
- * POST /api/ussd-officers/[id]/toggle - Toggle USSD enabled status
+ * POST /api/ussd-officers/[id]/toggle
+ * Enable or disable USSD access for an officer
  *
- * Authentication: Required (NextAuth session)
- * Permissions: Admin only (canManageOfficers)
+ * Permissions: SuperAdmin, Admin only
  */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { container } from "@/src/di/container";
-import { canManageOfficers } from "@/lib/permissions";
-import { NotFoundError } from "@/src/lib/errors";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 /**
  * POST /api/ussd-officers/[id]/toggle
- * Toggle USSD enabled status (enable/disable)
+ *
+ * Toggle ussdEnabled flag for an officer
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    // Authentication check
     const session = await getServerSession(authOptions);
-
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!canManageOfficers(session)) {
+    // Permission check (SuperAdmin or Admin only)
+    const admin = await prisma.officer.findUnique({
+      where: { id: session.user.id },
+      include: { role: true },
+    });
+
+    if (!admin || (admin.role.level !== 1 && admin.role.level !== 2)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const prisma = container.prismaClient;
+    const { id: officerId } = await params;
 
-    // Get current status
+    // Get target officer
     const officer = await prisma.officer.findUnique({
-      where: { id },
-      select: { ussdEnabled: true, ussdPhoneNumber: true, name: true },
+      where: { id: officerId },
+      select: {
+        id: true,
+        badge: true,
+        name: true,
+        ussdPhoneNumber: true,
+        ussdEnabled: true,
+      },
     });
 
     if (!officer) {
       return NextResponse.json({ error: "Officer not found" }, { status: 404 });
     }
 
-    // Can't enable if not registered
-    if (!officer.ussdPhoneNumber && !officer.ussdEnabled) {
+    if (!officer.ussdPhoneNumber) {
       return NextResponse.json(
-        { error: "Officer must be registered for USSD first" },
+        { error: "Officer has not registered for USSD" },
         { status: 400 }
       );
     }
 
-    // Toggle status
+    // Toggle enabled status
     const newStatus = !officer.ussdEnabled;
 
-    const updatedOfficer = await prisma.officer.update({
-      where: { id },
-      data: { ussdEnabled: newStatus },
-      select: {
-        id: true,
-        badge: true,
-        name: true,
-        ussdEnabled: true,
-        ussdPhoneNumber: true,
+    await prisma.officer.update({
+      where: { id: officerId },
+      data: {
+        ussdEnabled: newStatus,
       },
     });
 
-    // Audit log
-    const forwarded = request.headers.get("x-forwarded-for");
-    const ip = forwarded ? forwarded.split(",")[0] : "unknown";
-
-    await container.auditLogRepository.create({
-      entityType: "officer",
-      entityId: id,
-      officerId: session.user.id,
-      action: "update",
-      success: true,
-      details: {
-        ussdToggle: true,
-        newStatus,
-        action: newStatus ? "enabled" : "disabled",
+    // Log admin action
+    await prisma.auditLog.create({
+      data: {
+        entityType: "officer",
+        entityId: officerId,
+        officerId: session.user.id,
+        action: "update",
+        details: {
+          field: "ussdEnabled",
+          oldValue: officer.ussdEnabled,
+          newValue: newStatus,
+          targetOfficer: officer.badge,
+          action: newStatus ? "enabled" : "disabled",
+        },
+        success: true,
       },
-      ipAddress: ip,
     });
 
     return NextResponse.json({
-      officer: updatedOfficer,
-      message: `USSD ${newStatus ? "enabled" : "disabled"} for ${officer.name}`,
+      success: true,
+      officer: {
+        id: officer.id,
+        badge: officer.badge,
+        name: officer.name,
+        ussdEnabled: newStatus,
+      },
+      message: `USSD access ${newStatus ? "enabled" : "disabled"} for ${officer.name}`,
     });
   } catch (error) {
-    const { id } = await params;
-    console.error(`POST /api/ussd-officers/${id}/toggle error:`, error);
-
-    if (error instanceof NotFoundError) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
-    }
-
+    console.error("[USSD Toggle Error]", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

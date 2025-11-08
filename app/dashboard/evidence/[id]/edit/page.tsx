@@ -36,6 +36,10 @@ async function getEvidence(id: string) {
         type: true,
         description: true,
         collectedDate: true,
+        collectedLocation: true,
+        storageLocation: true,
+        tags: true,
+        notes: true,
       },
     });
 
@@ -94,9 +98,10 @@ export default async function EditEvidencePage({ params }: PageProps) {
     collectedDate: evidence.collectedDate
       ? new Date(evidence.collectedDate).toISOString().slice(0, 16)
       : "",
-    collectedLocation: "",
-    storageLocation: "",
-    notes: "",
+    collectedLocation: evidence.collectedLocation || "",
+    storageLocation: evidence.storageLocation || "",
+    notes: evidence.notes || "",
+    tags: evidence.tags || [],
   };
 
   return (

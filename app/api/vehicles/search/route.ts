@@ -8,77 +8,41 @@
  * Permissions: Officer level access
  * Use Case: USSD integration, field officer quick checks
  */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { container } from "@/src/di/container";
-import { hasPermission } from "@/lib/permissions";
 
-/**
- * GET /api/vehicles/search
- * Quick search for vehicles by license plate
- */
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
-
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!hasPermission(session as any, "reports", "read", "station")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    // Parse query parameters
     const { searchParams } = new URL(request.url);
-    const licensePlate = searchParams.get("licensePlate");
-    const query = searchParams.get("q"); // Alternative query param
+    const query = searchParams.get("q") || "";
 
-    if (!licensePlate && !query) {
+    if (!query || query.length < 2) {
       return NextResponse.json(
-        { error: "License plate or query parameter required" },
+        { error: "Search query must be at least 2 characters" },
         { status: 400 }
       );
     }
 
-    const searchTerm = licensePlate || query;
-
-    // Search vehicles - use checkVehicle for single plate lookup
-    const vehicle = await container.vehicleService.checkVehicle(
-      searchTerm!,
-      session.user.id
-    );
-
-    if (!vehicle) {
-      return NextResponse.json(
-        { found: false, message: "Vehicle not found" },
-        { status: 404 }
-      );
-    }
+    const result = await container.vehicleService.searchVehicles({ licensePlate: query });
 
     return NextResponse.json({
-      found: true,
-      vehicle: {
-        id: vehicle.id,
-        licensePlate: vehicle.licensePlate,
-        ownerName: vehicle.ownerName,
-        ownerNIN: vehicle.ownerNIN,
-        vehicleType: vehicle.vehicleType,
-        make: vehicle.make,
-        model: vehicle.model,
-        color: vehicle.color,
-        year: vehicle.year,
-        status: vehicle.status,
-        stolenDate: vehicle.stolenDate,
-        recoveredDate: vehicle.recoveredDate,
-      },
+      success: true,
+      query,
+      vehicles: result.vehicles,
+      count: result.total,
     });
-  } catch (error) {
-    console.error("GET /api/vehicles/search error:", error);
-
+  } catch (error: any) {
+    console.error("[Vehicle Search Error]", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error.message || "Internal server error" },
       { status: 500 }
     );
   }

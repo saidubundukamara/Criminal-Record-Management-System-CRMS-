@@ -36,15 +36,16 @@ async function getBackgroundCheck(id: string) {
 export default async function BackgroundCheckDetailPage({
   params,
 }: {
-  params: { id: string };
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
     redirect("/login");
   }
 
-  const check = await getBackgroundCheck(params.id);
+  const check = await getBackgroundCheck(id);
 
   if (!check) {
     notFound();

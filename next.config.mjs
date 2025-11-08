@@ -14,7 +14,8 @@ const bundleAnalyzer = withBundleAnalyzer({
 
 const withPWA = withPWAInit({
   dest: 'public',
-  disable: process.env.NODE_ENV === 'development', // Disable PWA in development
+  // Only disable in dev when NOT explicitly testing PWA
+  disable: process.env.NODE_ENV === 'development' && process.env.ENABLE_PWA_DEV !== 'true',
   register: true,
   skipWaiting: true,
   // Service Worker configuration
@@ -34,6 +35,42 @@ const withPWA = withPWAInit({
 
     // Cache strategies (optimized for 2G/3G networks across Africa)
     runtimeCaching: [
+      {
+        // Cache RSC (React Server Component) navigation payloads
+        // These are fetched when using Next.js Link for client-side navigation
+        urlPattern: ({ request, url }) => {
+          // Match requests with _rsc query parameter
+          return request.mode === 'cors' && url.searchParams.has('_rsc');
+        },
+        handler: 'NetworkFirst',
+        options: {
+          cacheName: 'crms-rsc-v1',
+          networkTimeoutSeconds: 3, // Fast timeout for offline detection
+          expiration: {
+            maxEntries: 100,
+            maxAgeSeconds: 24 * 60 * 60, // 24 hours
+          },
+          cacheableResponse: {
+            statuses: [0, 200],
+          },
+        },
+      },
+      {
+        // Cache page navigations (for offline browsing)
+        urlPattern: ({ request }) => request.mode === 'navigate',
+        handler: 'NetworkFirst',
+        options: {
+          cacheName: 'crms-pages-v1',
+          networkTimeoutSeconds: 5,
+          expiration: {
+            maxEntries: 50,
+            maxAgeSeconds: 24 * 60 * 60, // 24 hours
+          },
+          cacheableResponse: {
+            statuses: [0, 200],
+          },
+        },
+      },
       {
         // Cache API routes (NetworkFirst - try network, fallback to cache)
         urlPattern: /^\/api\/.*$/i,
@@ -151,6 +188,26 @@ const withPWA = withPWAInit({
     navigateFallbackDenylist: [
       /^\/api\/auth/, // Don't cache auth routes
       /^\/api\/sync/, // Don't cache sync routes (handled separately)
+    ],
+
+    // Enable navigation preload for faster page loads
+    navigationPreload: true,
+
+    // Navigation fallback configuration
+    navigateFallback: '/offline',
+    navigateFallbackAllowlist: [
+      /^\/dashboard/,
+      /^\/cases/,
+      /^\/persons/,
+      /^\/evidence/,
+      /^\/alerts/,
+    ],
+    navigateFallbackDenylist: [
+      /^\/_next/,
+      /^\/api/,
+      /\.(?:css|js|json|xml|txt|map)$/,
+      /^\/login/,
+      /^\/auth/,
     ],
   },
 

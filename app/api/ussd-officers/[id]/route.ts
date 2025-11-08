@@ -7,16 +7,12 @@
  *
  * Authentication: Required (NextAuth session)
  * Permissions: Admin only (canManageOfficers)
+ *
+ * STATUS: Phase 7 - Not yet implemented
  */
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { container } from "@/src/di/container";
-import { canManageOfficers } from "@/lib/permissions";
-import {
-  ValidationError,
-  NotFoundError,
-} from "@/src/lib/errors";
 
 /**
  * GET /api/ussd-officers/[id]
@@ -27,76 +23,66 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
     const session = await getServerSession(authOptions);
-
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!canManageOfficers(session)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
+    // Import Prisma here since DI container isn't available in API routes yet
+    const { PrismaClient } = await import("@prisma/client");
+    const prisma = new PrismaClient();
 
-    const prisma = container.prismaClient;
+    const { id } = await params;
 
-    // Fetch officer with USSD data
+    // Get officer with USSD data
     const officer = await prisma.officer.findUnique({
       where: { id },
       include: {
         role: { select: { name: true, level: true } },
-        station: { select: { code: true, name: true } },
-        _count: {
-          select: { ussdQueries: true },
-        },
+        station: { select: { name: true, code: true } },
+        _count: { select: { ussdQueryLogs: true } },
       },
     });
 
     if (!officer) {
+      await prisma.$disconnect();
       return NextResponse.json({ error: "Officer not found" }, { status: 404 });
     }
 
-    // Calculate today's query count
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Get today's query count
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
 
     const queriesToday = await prisma.uSSDQueryLog.count({
       where: {
         officerId: id,
-        timestamp: { gte: today },
+        timestamp: { gte: startOfDay },
       },
     });
 
+    await prisma.$disconnect();
+
     return NextResponse.json({
+      success: true,
       officer: {
         id: officer.id,
         badge: officer.badge,
         name: officer.name,
-        email: officer.email,
-        phone: officer.phone,
-        roleId: officer.roleId,
-        roleName: officer.role.name,
-        roleLevel: officer.role.level,
-        stationId: officer.stationId,
-        stationName: officer.station.name,
-        stationCode: officer.station.code,
         ussdPhoneNumber: officer.ussdPhoneNumber,
         ussdEnabled: officer.ussdEnabled,
-        ussdDailyLimit: officer.ussdDailyLimit,
         ussdRegisteredAt: officer.ussdRegisteredAt,
         ussdLastUsed: officer.ussdLastUsed,
-        totalQueries: officer._count.ussdQueries,
+        ussdDailyLimit: officer.ussdDailyLimit,
         queriesToday,
+        totalQueries: officer._count.ussdQueryLogs,
+        roleName: officer.role.name,
+        roleLevel: officer.role.level,
+        stationName: officer.station.name,
+        stationCode: officer.station.code,
       },
     });
   } catch (error) {
-    const { id } = await params;
-    console.error(`GET /api/ussd-officers/${id} error:`, error);
-
-    if (error instanceof NotFoundError) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
-    }
-
+    console.error("[USSD Officer Detail Error]", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -113,36 +99,51 @@ export async function PATCH(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
     const session = await getServerSession(authOptions);
-
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!canManageOfficers(session)) {
+    // Import Prisma and helpers
+    const { PrismaClient } = await import("@prisma/client");
+    const prisma = new PrismaClient();
+
+    // Permission check: Only SuperAdmin and Admin can update USSD settings
+    const requestingOfficer = await prisma.officer.findUnique({
+      where: { id: session.user.id },
+      include: { role: true },
+    });
+
+    if (!requestingOfficer || (requestingOfficer.role.level !== 1 && requestingOfficer.role.level !== 2)) {
+      await prisma.$disconnect();
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
+    const { id } = await params;
     const body = await request.json();
+
     const { ussdPhoneNumber, ussdDailyLimit } = body;
 
-    // Validate input
-    if (ussdPhoneNumber && typeof ussdPhoneNumber !== "string") {
-      return NextResponse.json(
-        { error: "Invalid phone number format" },
-        { status: 400 }
-      );
+    // Validate inputs
+    if (ussdPhoneNumber !== undefined && ussdPhoneNumber !== null) {
+      if (typeof ussdPhoneNumber !== "string" || !/^\+?[1-9]\d{1,14}$/.test(ussdPhoneNumber)) {
+        await prisma.$disconnect();
+        return NextResponse.json(
+          { error: "Invalid phone number format (E.164 required)" },
+          { status: 400 }
+        );
+      }
     }
 
-    if (ussdDailyLimit && (typeof ussdDailyLimit !== "number" || ussdDailyLimit < 1)) {
-      return NextResponse.json(
-        { error: "Daily limit must be a positive number" },
-        { status: 400 }
-      );
+    if (ussdDailyLimit !== undefined) {
+      if (typeof ussdDailyLimit !== "number" || ussdDailyLimit < 1 || ussdDailyLimit > 1000) {
+        await prisma.$disconnect();
+        return NextResponse.json(
+          { error: "Daily limit must be between 1 and 1000" },
+          { status: 400 }
+        );
+      }
     }
-
-    const prisma = container.prismaClient;
 
     // Update officer
     const updatedOfficer = await prisma.officer.update({
@@ -153,51 +154,43 @@ export async function PATCH(
       },
       include: {
         role: { select: { name: true } },
-        station: { select: { code: true, name: true } },
+        station: { select: { name: true } },
       },
     });
 
-    // Audit log
-    const forwarded = request.headers.get("x-forwarded-for");
-    const ip = forwarded ? forwarded.split(",")[0] : "unknown";
-
-    await container.auditLogRepository.create({
-      entityType: "officer",
-      entityId: id,
-      officerId: session.user.id,
-      action: "update",
-      success: true,
-      details: {
-        ussdPhoneNumber: ussdPhoneNumber !== undefined,
-        ussdDailyLimit: ussdDailyLimit !== undefined,
+    // Log audit
+    await prisma.auditLog.create({
+      data: {
+        entityType: "officer",
+        entityId: id,
+        action: "update",
+        officerId: session.user.id,
+        details: {
+          field: "ussd_settings",
+          changes: body,
+        },
+        success: true,
+        ipAddress: request.headers.get("x-forwarded-for") || request.headers.get("x-real-ip") || "unknown",
       },
-      ipAddress: ip,
     });
+
+    await prisma.$disconnect();
 
     return NextResponse.json({
+      success: true,
+      message: "USSD settings updated successfully",
       officer: {
         id: updatedOfficer.id,
         badge: updatedOfficer.badge,
         name: updatedOfficer.name,
         ussdPhoneNumber: updatedOfficer.ussdPhoneNumber,
         ussdDailyLimit: updatedOfficer.ussdDailyLimit,
-        ussdEnabled: updatedOfficer.ussdEnabled,
       },
     });
-  } catch (error) {
-    const { id } = await params;
-    console.error(`PATCH /api/ussd-officers/${id} error:`, error);
-
-    if (error instanceof ValidationError) {
-      return NextResponse.json({ error: error.message }, { status: 400 });
-    }
-
-    if (error instanceof NotFoundError) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
-    }
-
+  } catch (error: any) {
+    console.error("[USSD Officer Update Error]", error);
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error.message || "Internal server error" },
       { status: 500 }
     );
   }

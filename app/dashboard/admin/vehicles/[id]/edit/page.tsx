@@ -6,165 +6,345 @@
  */
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useState, useEffect, use } from "react";
-import { VehicleForm, VehicleFormData } from "@/components/vehicles/vehicle-form";
-import { ArrowLeft } from "lucide-react";
+import { useEffect, useState } from "react";
+import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Save, Loader2 } from "lucide-react";
 
-interface PageProps {
-  params: Promise<{
-    id: string;
-  }>;
-}
+const vehicleTypes = [
+  "car",
+  "truck",
+  "motorcycle",
+  "bus",
+  "van",
+  "bicycle",
+  "tricycle",
+  "other"
+];
 
-export default function EditVehiclePage({ params }: PageProps) {
+const statuses = [
+  { value: "active", label: "Active" },
+  { value: "stolen", label: "Stolen" },
+  { value: "recovered", label: "Recovered" },
+  { value: "impounded", label: "Impounded" }
+];
+
+export default function EditVehiclePage() {
   const router = useRouter();
-  const { id } = use(params);
-  const [vehicle, setVehicle] = useState<(VehicleFormData & { id: string }) | null>(null);
-  const [stations, setStations] = useState<Array<{ id: string; name: string; code: string }>>([]);
+  const params = useParams();
+  const id = params.id as string;
+
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  const [formData, setFormData] = useState({
+    licensePlate: "",
+    ownerNIN: "",
+    ownerName: "",
+    vehicleType: "car",
+    make: "",
+    model: "",
+    color: "",
+    year: "",
+    status: "active",
+    notes: "",
+  });
 
   useEffect(() => {
-    async function loadData() {
+    async function loadVehicle() {
       try {
-        const [vehicleRes, stationsRes] = await Promise.all([
-          fetch(`/api/vehicles/${id}`),
-          fetch("/api/stations"),
-        ]);
-
-        if (!vehicleRes.ok) {
-          if (vehicleRes.status === 404) {
-            setError("Vehicle not found");
-          } else {
-            setError("Failed to load vehicle data");
-          }
-          return;
+        const response = await fetch(`/api/vehicles/${id}`);
+        if (!response.ok) {
+          throw new Error("Failed to load vehicle");
         }
+        const data = await response.json();
+        const vehicle = data.vehicle;
 
-        const vehicleData = await vehicleRes.json();
-        setVehicle({
-          id: vehicleData.vehicle.id,
-          licensePlate: vehicleData.vehicle.licensePlate,
-          ownerNIN: vehicleData.vehicle.ownerNIN || "",
-          ownerName: vehicleData.vehicle.ownerName || "",
-          vehicleType: vehicleData.vehicle.vehicleType,
-          make: vehicleData.vehicle.make || "",
-          model: vehicleData.vehicle.model || "",
-          color: vehicleData.vehicle.color || "",
-          year: vehicleData.vehicle.year,
-          notes: vehicleData.vehicle.notes || "",
-          stationId: vehicleData.vehicle.stationId,
+        setFormData({
+          licensePlate: vehicle.licensePlate || "",
+          ownerNIN: vehicle.ownerNIN || "",
+          ownerName: vehicle.ownerName || "",
+          vehicleType: vehicle.vehicleType || "car",
+          make: vehicle.make || "",
+          model: vehicle.model || "",
+          color: vehicle.color || "",
+          year: vehicle.year?.toString() || "",
+          status: vehicle.status || "active",
+          notes: vehicle.notes || "",
         });
-
-        if (stationsRes.ok) {
-          const stationsData = await stationsRes.json();
-          setStations(stationsData.stations || []);
-        }
-      } catch (error) {
-        console.error("Failed to load data:", error);
-        setError("Failed to load vehicle data");
+      } catch (err: any) {
+        setError(err.message);
       } finally {
         setLoading(false);
       }
     }
 
-    loadData();
+    loadVehicle();
   }, [id]);
 
-  const handleSubmit = async (formData: VehicleFormData) => {
-    const response = await fetch(`/api/vehicles/${id}`, {
-      method: "PATCH",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(formData),
-    });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.error || "Failed to update vehicle");
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const payload: any = {
+        licensePlate: formData.licensePlate,
+        vehicleType: formData.vehicleType,
+        status: formData.status,
+      };
+
+      if (formData.ownerNIN) payload.ownerNIN = formData.ownerNIN;
+      if (formData.ownerName) payload.ownerName = formData.ownerName;
+      if (formData.make) payload.make = formData.make;
+      if (formData.model) payload.model = formData.model;
+      if (formData.color) payload.color = formData.color;
+      if (formData.year) payload.year = parseInt(formData.year, 10);
+      if (formData.notes) payload.notes = formData.notes;
+
+      const response = await fetch(`/api/vehicles/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Failed to update vehicle");
+      }
+
+      router.push(`/dashboard/admin/vehicles/${id}`);
+    } catch (err: any) {
+      setError(err.message);
+      setSubmitting(false);
     }
-
-    return response.json();
   };
 
   if (loading) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href={`/dashboard/admin/vehicles/${id}`}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Vehicle
-            </Link>
-          </Button>
-        </div>
-        <div className="bg-white rounded-lg border p-6">
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !vehicle) {
-    return (
-      <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/dashboard/admin/vehicles">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              Back to Vehicles
-            </Link>
-          </Button>
-        </div>
-        <div className="bg-white rounded-lg border p-6">
-          <p className="text-red-600">{error || "Vehicle not found"}</p>
-        </div>
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6">
+    <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Link href={`/dashboard/admin/vehicles/${id}`}>
-          <Button variant="ghost" size="sm">
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Vehicle
-          </Button>
-        </Link>
-      </div>
-
-      <div className="bg-white rounded-lg border p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Edit Vehicle</h1>
-          <p className="text-gray-600 mt-2">
-            Update the vehicle details below
-          </p>
+        <Button variant="ghost" size="icon" asChild>
+          <Link href={`/dashboard/admin/vehicles/${id}`}>
+            <ArrowLeft className="h-4 w-4" />
+          </Link>
+        </Button>
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Edit Vehicle</h1>
+          <p className="text-muted-foreground mt-2">Update vehicle information and status</p>
         </div>
-
-        <VehicleForm
-          vehicle={vehicle}
-          stations={stations}
-          onSubmit={handleSubmit}
-          mode="edit"
-        />
       </div>
 
-      {/* Help Text */}
-      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-        <h3 className="font-semibold text-blue-900 mb-2">Editing Guidelines</h3>
-        <ul className="text-sm text-blue-800 space-y-1 list-disc list-inside">
-          <li>All changes will be tracked in the audit log</li>
-          <li>License plate cannot be changed after registration</li>
-          <li>Update owner information if vehicle ownership changes</li>
-          <li>Status changes (stolen, recovered, impounded) are done via Quick Actions</li>
-        </ul>
-      </div>
+      {error && (
+        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
+          {error}
+        </div>
+      )}
+
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Vehicle Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Vehicle Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label htmlFor="licensePlate">License Plate *</Label>
+                <Input
+                  id="licensePlate"
+                  name="licensePlate"
+                  value={formData.licensePlate}
+                  onChange={handleChange}
+                  required
+                  placeholder="e.g., SL-A-1234"
+                  className="font-mono"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="vehicleType">Vehicle Type *</Label>
+                <select
+                  id="vehicleType"
+                  name="vehicleType"
+                  value={formData.vehicleType}
+                  onChange={handleChange}
+                  required
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {vehicleTypes.map(type => (
+                    <option key={type} value={type} className="capitalize">
+                      {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label htmlFor="make">Make</Label>
+                <Input
+                  id="make"
+                  name="make"
+                  value={formData.make}
+                  onChange={handleChange}
+                  placeholder="e.g., Toyota"
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="model">Model</Label>
+                <Input
+                  id="model"
+                  name="model"
+                  value={formData.model}
+                  onChange={handleChange}
+                  placeholder="e.g., Corolla"
+                />
+              </div>
+            </div>
+
+            <div className="grid gap-4 md:grid-cols-2">
+              <div>
+                <Label htmlFor="year">Year</Label>
+                <Input
+                  id="year"
+                  name="year"
+                  type="number"
+                  value={formData.year}
+                  onChange={handleChange}
+                  placeholder="e.g., 2020"
+                  min="1900"
+                  max={new Date().getFullYear() + 1}
+                />
+              </div>
+
+              <div>
+                <Label htmlFor="color">Color</Label>
+                <Input
+                  id="color"
+                  name="color"
+                  value={formData.color}
+                  onChange={handleChange}
+                  placeholder="e.g., Silver"
+                />
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="status">Status *</Label>
+              <select
+                id="status"
+                name="status"
+                value={formData.status}
+                onChange={handleChange}
+                required
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {statuses.map(status => (
+                  <option key={status.value} value={status.value}>
+                    {status.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Owner Information */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Owner Information</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div>
+              <Label htmlFor="ownerName">Owner Name</Label>
+              <Input
+                id="ownerName"
+                name="ownerName"
+                value={formData.ownerName}
+                onChange={handleChange}
+                placeholder="Full name of vehicle owner"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="ownerNIN">National ID (NIN)</Label>
+              <Input
+                id="ownerNIN"
+                name="ownerNIN"
+                value={formData.ownerNIN}
+                onChange={handleChange}
+                placeholder="Owner's National Identification Number"
+                className="font-mono"
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Additional Notes */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Additional Notes</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Label htmlFor="notes">Notes</Label>
+            <Textarea
+              id="notes"
+              name="notes"
+              value={formData.notes}
+              onChange={handleChange}
+              placeholder="Any additional information about this vehicle..."
+              rows={4}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Actions */}
+        <div className="flex justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => router.push(`/dashboard/admin/vehicles/${id}`)}
+            disabled={submitting}
+          >
+            Cancel
+          </Button>
+          <Button type="submit" disabled={submitting}>
+            {submitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Saving...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Save Changes
+              </>
+            )}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 }

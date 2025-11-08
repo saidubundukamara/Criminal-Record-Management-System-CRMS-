@@ -13,7 +13,14 @@ import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { container } from "@/src/di/container";
 
-async function getCases() {
+type CaseOption = {
+  id: string;
+  caseNumber: string;
+  title: string;
+  status: string;
+};
+
+async function getCases(): Promise<CaseOption[]> {
   const session = await getServerSession(authOptions);
 
   if (!session?.user) {
@@ -36,7 +43,7 @@ async function getCases() {
       },
     });
 
-    return cases as any[];
+    return cases;
   } catch (error) {
     console.error("Error fetching cases:", error);
     return [];

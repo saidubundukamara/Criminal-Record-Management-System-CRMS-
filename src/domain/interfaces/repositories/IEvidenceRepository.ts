@@ -41,6 +41,7 @@ export interface CreateEvidenceDto {
 export interface UpdateEvidenceDto {
   type?: EvidenceType;
   description?: string;
+  collectedLocation?: string | null;
   status?: EvidenceStatus;
   fileUrl?: string | null;
   fileName?: string | null;

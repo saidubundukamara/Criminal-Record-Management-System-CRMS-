@@ -393,8 +393,9 @@ export class AnalyticsService {
     // Get other station resources
     const evidenceItems = await this.evidenceRepo.findAll({ stationId });
     const personRecords = await this.personRepo.findAll({}); // Filter by station if available
-    const vehicleRecordsResult = await this.vehicleRepo.search({ stationId }, { limit: 10000 });
-    const vehicleRecords = vehicleRecordsResult.vehicles;
+    // Phase 7 - Vehicle repo not yet implemented
+    // const vehicleRecordsResult = await this.vehicleRepo.search({ stationId }, { limit: 10000 });
+    const vehicleRecords: any[] = []; // Placeholder until Phase 7
     const backgroundChecks = await this.bgCheckRepo.findAll({}); // Filter by station if available
     const activeAlerts = await this.alertRepo.findActive();
 
@@ -446,8 +447,9 @@ export class AnalyticsService {
     const allCases = await this.caseRepo.findAll({});
     const allPersons = await this.personRepo.findAll({});
     const allEvidence = await this.evidenceRepo.findAll({});
-    const allVehiclesResult = await this.vehicleRepo.search({}, { limit: 10000 });
-    const allVehicles = allVehiclesResult.vehicles;
+    // Phase 7 - Vehicle repo not yet implemented
+    // const allVehiclesResult = await this.vehicleRepo.search({}, { limit: 10000 });
+    const allVehicles: any[] = []; // Placeholder until Phase 7
 
     const wantedPersons = allPersons.filter((p) => p.isWanted).length;
     const activeAlerts = await this.alertRepo.findActive();

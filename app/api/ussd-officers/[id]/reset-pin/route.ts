@@ -1,119 +1,94 @@
 /**
- * USSD Officer Reset PIN API Route
+ * USSD Officer Reset PIN API
  *
- * Endpoint:
- * POST /api/ussd-officers/[id]/reset-pin - Reset officer's USSD Quick PIN
+ * POST /api/ussd-officers/[id]/reset-pin
+ * Reset an officer's Quick PIN (generates new random PIN)
  *
- * Authentication: Required (NextAuth session)
- * Permissions: Admin only (canManageOfficers)
+ * Permissions: SuperAdmin, Admin only
  */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { container } from "@/src/di/container";
-import { canManageOfficers } from "@/lib/permissions";
-import { NotFoundError } from "@/src/lib/errors";
-import { hash } from "argon2";
+import { resetQuickPin } from "@/lib/ussd-auth";
+import { PrismaClient } from "@prisma/client";
+
+const prisma = new PrismaClient();
 
 /**
  * POST /api/ussd-officers/[id]/reset-pin
- * Reset officer's USSD Quick PIN to a default value
+ *
+ * Reset officer's Quick PIN and return new PIN
  */
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
+    // Authentication check
     const session = await getServerSession(authOptions);
-
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    if (!canManageOfficers(session)) {
+    // Permission check (SuperAdmin or Admin only)
+    const admin = await prisma.officer.findUnique({
+      where: { id: session.user.id },
+      include: { role: true },
+    });
+
+    if (!admin || (admin.role.level !== 1 && admin.role.level !== 2)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 });
     }
 
-    const body = await request.json();
-    const { newPin } = body;
+    const { id: officerId } = await params;
 
-    // Validate PIN
-    if (!newPin || typeof newPin !== "string") {
+    // Reset Quick PIN
+    const result = await resetQuickPin(officerId, session.user.id);
+
+    if (!result.success) {
       return NextResponse.json(
-        { error: "New PIN is required" },
+        { error: result.error },
         { status: 400 }
       );
     }
 
-    if (newPin.length !== 4 || !/^\d{4}$/.test(newPin)) {
-      return NextResponse.json(
-        { error: "PIN must be exactly 4 digits" },
-        { status: 400 }
-      );
-    }
-
-    const prisma = container.prismaClient;
-
-    // Check officer exists
+    // Get officer details for response
     const officer = await prisma.officer.findUnique({
-      where: { id },
-      select: { id: true, name: true, ussdPhoneNumber: true },
-    });
-
-    if (!officer) {
-      return NextResponse.json({ error: "Officer not found" }, { status: 404 });
-    }
-
-    if (!officer.ussdPhoneNumber) {
-      return NextResponse.json(
-        { error: "Officer is not registered for USSD" },
-        { status: 400 }
-      );
-    }
-
-    // Hash the new PIN
-    const pinHash = await hash(newPin, {
-      type: 2, // Argon2id
-      memoryCost: 19456,
-      timeCost: 2,
-    });
-
-    // Update officer with new PIN hash
-    await prisma.officer.update({
-      where: { id },
-      data: { ussdQuickPinHash: pinHash },
-    });
-
-    // Audit log
-    const forwarded = request.headers.get("x-forwarded-for");
-    const ip = forwarded ? forwarded.split(",")[0] : "unknown";
-
-    await container.auditLogRepository.create({
-      entityType: "officer",
-      entityId: id,
-      officerId: session.user.id,
-      action: "update",
-      success: true,
-      details: {
-        ussdPinReset: true,
-        officerName: officer.name,
+      where: { id: officerId },
+      select: {
+        badge: true,
+        name: true,
       },
-      ipAddress: ip,
+    });
+
+    // Log admin action
+    await prisma.auditLog.create({
+      data: {
+        entityType: "officer",
+        entityId: officerId,
+        officerId: session.user.id,
+        action: "update",
+        details: {
+          field: "ussdQuickPinHash",
+          action: "reset_quick_pin",
+          targetOfficer: officer?.badge,
+        },
+        success: true,
+      },
     });
 
     return NextResponse.json({
-      message: `USSD Quick PIN reset successfully for ${officer.name}`,
       success: true,
+      quickPin: result.quickPin,
+      officer: {
+        badge: officer?.badge,
+        name: officer?.name,
+      },
+      message: `Quick PIN reset for ${officer?.name}. New PIN: ${result.quickPin}`,
     });
   } catch (error) {
-    const { id } = await params;
-    console.error(`POST /api/ussd-officers/${id}/reset-pin error:`, error);
-
-    if (error instanceof NotFoundError) {
-      return NextResponse.json({ error: error.message }, { status: 404 });
-    }
-
+    console.error("[USSD Reset PIN Error]", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

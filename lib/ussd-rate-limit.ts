@@ -39,92 +39,102 @@ export interface QueryLogData {
   officerId: string;
   phoneNumber: string;
   queryType: "wanted" | "missing" | "background" | "vehicle" | "stats";
-  searchTerm: string; // NIN or license plate
-  resultSummary?: string | null; // Brief result (e.g., "WANTED", "NOT FOUND", "STOLEN")
-  success?: boolean;
-  errorMessage?: string | null;
-  sessionId?: string | null;
+  searchTerm: string;
+  resultSummary?: string;
+  success: boolean;
+  errorMessage?: string;
+  sessionId?: string;
 }
 
 /**
- * Officer query statistics
+ * Query statistics for an officer
  */
 export interface QueryStatistics {
   today: number;
   thisWeek: number;
   thisMonth: number;
-  allTime: number;
-  byType: {
-    wanted: number;
-    missing: number;
-    background: number;
-    vehicle: number;
-    stats: number;
-  };
-  lastQuery: Date | null;
+  total: number;
+  byType: Record<string, number>;
+  successRate: number;
 }
 
 /**
- * Check if officer has exceeded daily rate limit
+ * Check if officer has remaining rate limit quota
  *
- * @param officerId - Officer's ID
- * @returns Rate limit check result with remaining quota
+ * Process:
+ * 1. Get officer's daily limit from database
+ * 2. Calculate today's midnight timestamp
+ * 3. Count queries since midnight
+ * 4. Check if under limit
+ * 5. Return remaining quota
  */
 export async function checkRateLimit(
   officerId: string
 ): Promise<RateLimitResult> {
   try {
-    // Get officer's daily limit (default: 50)
+    // Step 1: Get officer's daily limit
     const officer = await prisma.officer.findUnique({
       where: { id: officerId },
       select: { ussdDailyLimit: true },
     });
 
-    const limit = officer?.ussdDailyLimit || 50;
+    if (!officer) {
+      throw new Error("Officer not found");
+    }
 
-    // Calculate today's boundary (midnight to midnight)
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const limit = officer.ussdDailyLimit;
 
-    // Count today's queries
+    // Step 2: Calculate today's midnight
+    const todayMidnight = new Date();
+    todayMidnight.setHours(0, 0, 0, 0);
+
+    // Calculate tomorrow's midnight for reset time
+    const tomorrowMidnight = new Date(todayMidnight);
+    tomorrowMidnight.setDate(tomorrowMidnight.getDate() + 1);
+
+    // Step 3: Count queries since midnight
     const count = await prisma.uSSDQueryLog.count({
       where: {
         officerId,
         timestamp: {
-          gte: today,
+          gte: todayMidnight,
         },
       },
     });
 
-    // Calculate reset time (tomorrow at midnight)
-    const resetAt = new Date(today);
-    resetAt.setDate(resetAt.getDate() + 1);
+    // Step 4 & 5: Check limit and return result
+    const remaining = Math.max(0, limit - count);
 
     return {
       allowed: count < limit,
-      remaining: Math.max(0, limit - count),
+      remaining,
       limit,
-      resetAt,
+      resetAt: tomorrowMidnight,
     };
   } catch (error) {
-    console.error("Rate limit check error:", error);
-    // Fail open: Allow query if there's an error (but log it)
+    console.error("[USSD Rate Limit Error]", error);
+    // Fail closed - deny access on error
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    tomorrow.setHours(0, 0, 0, 0);
+
     return {
-      allowed: true,
+      allowed: false,
       remaining: 0,
       limit: 50,
-      resetAt: new Date(),
+      resetAt: tomorrow,
     };
   }
 }
 
 /**
- * Log USSD query to database
+ * Log a USSD query to database
  *
- * IMPORTANT: Always call this after processing a query (success or failure)
- * to maintain accurate rate limits and audit trails.
- *
- * @param data - Query log data
+ * Creates an immutable audit record of every USSD query for:
+ * - Accountability and compliance
+ * - Rate limiting calculations
+ * - Statistics and monitoring
+ * - Suspicious activity detection
  */
 export async function logQuery(data: QueryLogData): Promise<void> {
   try {
@@ -135,339 +145,290 @@ export async function logQuery(data: QueryLogData): Promise<void> {
         queryType: data.queryType,
         searchTerm: data.searchTerm,
         resultSummary: data.resultSummary || null,
-        success: data.success !== false, // Default to true if not specified
+        success: data.success,
         errorMessage: data.errorMessage || null,
         sessionId: data.sessionId || null,
         timestamp: new Date(),
       },
     });
   } catch (error) {
-    console.error("Query logging error:", error);
-    // Don't throw - logging failures shouldn't break the user flow
+    // Log error but don't throw - logging failure shouldn't break USSD flow
+    console.error("[USSD Query Logging Error]", error);
   }
 }
 
 /**
- * Get officer's query statistics
- *
- * @param officerId - Officer's ID
- * @returns Query statistics broken down by time period and type
+ * Get query statistics for an officer
  */
 export async function getQueryStatistics(
   officerId: string
 ): Promise<QueryStatistics> {
   try {
     const now = new Date();
-
-    // Calculate time boundaries
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-
-    const weekStart = new Date(now);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart);
     weekStart.setDate(weekStart.getDate() - 7);
-    weekStart.setHours(0, 0, 0, 0);
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
 
-    const monthStart = new Date(now);
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
+    // Count queries
+    const [today, thisWeek, thisMonth, total] = await Promise.all([
+      prisma.uSSDQueryLog.count({
+        where: { officerId, timestamp: { gte: todayStart } },
+      }),
+      prisma.uSSDQueryLog.count({
+        where: { officerId, timestamp: { gte: weekStart } },
+      }),
+      prisma.uSSDQueryLog.count({
+        where: { officerId, timestamp: { gte: monthStart } },
+      }),
+      prisma.uSSDQueryLog.count({
+        where: { officerId },
+      }),
+    ]);
 
-    // Parallel queries for efficiency
-    const [todayCount, weekCount, monthCount, allTimeCount, byType, lastQuery] =
-      await Promise.all([
-        // Today
-        prisma.uSSDQueryLog.count({
-          where: {
-            officerId,
-            timestamp: { gte: today },
-          },
-        }),
-
-        // This week
-        prisma.uSSDQueryLog.count({
-          where: {
-            officerId,
-            timestamp: { gte: weekStart },
-          },
-        }),
-
-        // This month
-        prisma.uSSDQueryLog.count({
-          where: {
-            officerId,
-            timestamp: { gte: monthStart },
-          },
-        }),
-
-        // All time
-        prisma.uSSDQueryLog.count({
-          where: { officerId },
-        }),
-
-        // By type
-        prisma.uSSDQueryLog.groupBy({
-          by: ["queryType"],
-          where: { officerId },
-          _count: { queryType: true },
-        }),
-
-        // Last query
-        prisma.uSSDQueryLog.findFirst({
-          where: { officerId },
-          orderBy: { timestamp: "desc" },
-          select: { timestamp: true },
-        }),
-      ]);
-
-    // Map query types to counts
-    const byTypeMap: QueryStatistics["byType"] = {
-      wanted: 0,
-      missing: 0,
-      background: 0,
-      vehicle: 0,
-      stats: 0,
-    };
-
-    byType.forEach((item) => {
-      if (item.queryType in byTypeMap) {
-        byTypeMap[item.queryType as keyof typeof byTypeMap] =
-          item._count.queryType;
-      }
+    // Get queries by type
+    const byTypeData = await prisma.uSSDQueryLog.groupBy({
+      by: ["queryType"],
+      where: { officerId },
+      _count: { queryType: true },
     });
 
+    const byType: Record<string, number> = {};
+    byTypeData.forEach((item) => {
+      byType[item.queryType] = item._count.queryType;
+    });
+
+    // Calculate success rate
+    const successCount = await prisma.uSSDQueryLog.count({
+      where: { officerId, success: true },
+    });
+    const successRate = total > 0 ? (successCount / total) * 100 : 0;
+
     return {
-      today: todayCount,
-      thisWeek: weekCount,
-      thisMonth: monthCount,
-      allTime: allTimeCount,
-      byType: byTypeMap,
-      lastQuery: lastQuery?.timestamp || null,
+      today,
+      thisWeek,
+      thisMonth,
+      total,
+      byType,
+      successRate,
     };
   } catch (error) {
-    console.error("Statistics retrieval error:", error);
-    // Return empty stats on error
+    console.error("[USSD Statistics Error]", error);
     return {
       today: 0,
       thisWeek: 0,
       thisMonth: 0,
-      allTime: 0,
-      byType: {
-        wanted: 0,
-        missing: 0,
-        background: 0,
-        vehicle: 0,
-        stats: 0,
-      },
-      lastQuery: null,
+      total: 0,
+      byType: {},
+      successRate: 0,
     };
   }
 }
 
 /**
- * Get station-wide query statistics (for commanders/admins)
- *
- * @param stationId - Station ID
- * @returns Aggregated statistics for all officers at the station
+ * Get station-wide USSD statistics
  */
 export async function getStationStatistics(stationId: string): Promise<{
-  today: number;
-  thisWeek: number;
-  thisMonth: number;
-  topOfficers: Array<{
-    officerId: string;
-    badge: string;
-    name: string;
-    queryCount: number;
-  }>;
+  totalQueries: number;
+  queriesToday: number;
+  queriesThisWeek: number;
+  activeOfficers: number;
+  topQueryTypes: Array<{ type: string; count: number }>;
 }> {
   try {
     const now = new Date();
-
-    // Calculate time boundaries
-    const today = new Date(now);
-    today.setHours(0, 0, 0, 0);
-
-    const weekStart = new Date(now);
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const weekStart = new Date(todayStart);
     weekStart.setDate(weekStart.getDate() - 7);
-    weekStart.setHours(0, 0, 0, 0);
 
-    const monthStart = new Date(now);
-    monthStart.setDate(1);
-    monthStart.setHours(0, 0, 0, 0);
-
-    // Get officers at station
-    const officers = await prisma.officer.findMany({
-      where: { stationId },
-      select: { id: true, badge: true, name: true },
+    // Get station officers
+    const stationOfficers = await prisma.officer.findMany({
+      where: { stationId, ussdEnabled: true },
+      select: { id: true },
     });
 
-    const officerIds = officers.map((o) => o.id);
+    const officerIds = stationOfficers.map((o) => o.id);
 
-    // Parallel queries
-    const [todayCount, weekCount, monthCount, topOfficersData] =
-      await Promise.all([
-        // Today
-        prisma.uSSDQueryLog.count({
-          where: {
-            officerId: { in: officerIds },
-            timestamp: { gte: today },
-          },
-        }),
-
-        // This week
-        prisma.uSSDQueryLog.count({
-          where: {
-            officerId: { in: officerIds },
-            timestamp: { gte: weekStart },
-          },
-        }),
-
-        // This month
-        prisma.uSSDQueryLog.count({
-          where: {
-            officerId: { in: officerIds },
-            timestamp: { gte: monthStart },
-          },
-        }),
-
-        // Top officers (this month)
-        prisma.uSSDQueryLog.groupBy({
-          by: ["officerId"],
-          where: {
-            officerId: { in: officerIds },
-            timestamp: { gte: monthStart },
-          },
-          _count: { officerId: true },
-          orderBy: { _count: { officerId: "desc" } },
-          take: 10,
-        }),
-      ]);
-
-    // Map officer IDs to details
-    const topOfficers = topOfficersData.map((item) => {
-      const officer = officers.find((o) => o.id === item.officerId);
+    if (officerIds.length === 0) {
       return {
-        officerId: item.officerId,
-        badge: officer?.badge || "Unknown",
-        name: officer?.name || "Unknown",
-        queryCount: item._count.officerId,
+        totalQueries: 0,
+        queriesToday: 0,
+        queriesThisWeek: 0,
+        activeOfficers: 0,
+        topQueryTypes: [],
       };
+    }
+
+    // Count queries
+    const [totalQueries, queriesToday, queriesThisWeek] = await Promise.all([
+      prisma.uSSDQueryLog.count({
+        where: { officerId: { in: officerIds } },
+      }),
+      prisma.uSSDQueryLog.count({
+        where: { officerId: { in: officerIds }, timestamp: { gte: todayStart } },
+      }),
+      prisma.uSSDQueryLog.count({
+        where: { officerId: { in: officerIds }, timestamp: { gte: weekStart } },
+      }),
+    ]);
+
+    // Get active officers (who made at least 1 query)
+    const activeOfficersData = await prisma.uSSDQueryLog.groupBy({
+      by: ["officerId"],
+      where: { officerId: { in: officerIds } },
     });
+    const activeOfficers = activeOfficersData.length;
+
+    // Get top query types
+    const topQueryTypesData = await prisma.uSSDQueryLog.groupBy({
+      by: ["queryType"],
+      where: { officerId: { in: officerIds } },
+      _count: { queryType: true },
+      orderBy: { _count: { queryType: "desc" } },
+      take: 5,
+    });
+
+    const topQueryTypes = topQueryTypesData.map((item) => ({
+      type: item.queryType,
+      count: item._count.queryType,
+    }));
 
     return {
-      today: todayCount,
-      thisWeek: weekCount,
-      thisMonth: monthCount,
-      topOfficers,
+      totalQueries,
+      queriesToday,
+      queriesThisWeek,
+      activeOfficers,
+      topQueryTypes,
     };
   } catch (error) {
-    console.error("Station statistics error:", error);
+    console.error("[USSD Station Statistics Error]", error);
     return {
-      today: 0,
-      thisWeek: 0,
-      thisMonth: 0,
-      topOfficers: [],
+      totalQueries: 0,
+      queriesToday: 0,
+      queriesThisWeek: 0,
+      activeOfficers: 0,
+      topQueryTypes: [],
     };
   }
 }
 
 /**
- * Get recent queries for an officer (for debugging/audit)
- *
- * @param officerId - Officer's ID
- * @param limit - Number of recent queries to retrieve
+ * Get recent queries (for admin monitoring)
  */
 export async function getRecentQueries(
-  officerId: string,
-  limit: number = 10
-): Promise<
-  Array<{
-    queryType: string;
-    searchTerm: string;
-    resultSummary: string | null;
-    success: boolean;
-    timestamp: Date;
-  }>
-> {
+  officerId?: string,
+  limit: number = 50
+): Promise<QueryLogData[]> {
   try {
-    const queries = await prisma.uSSDQueryLog.findMany({
-      where: { officerId },
+    const logs = await prisma.uSSDQueryLog.findMany({
+      where: officerId ? { officerId } : undefined,
       orderBy: { timestamp: "desc" },
       take: limit,
-      select: {
-        queryType: true,
-        searchTerm: true,
-        resultSummary: true,
-        success: true,
-        timestamp: true,
-      },
     });
 
-    return queries;
+    return logs.map((log) => ({
+      officerId: log.officerId,
+      phoneNumber: log.phoneNumber,
+      queryType: log.queryType as
+        | "wanted"
+        | "missing"
+        | "background"
+        | "vehicle"
+        | "stats",
+      searchTerm: log.searchTerm,
+      resultSummary: log.resultSummary || undefined,
+      success: log.success,
+      errorMessage: log.errorMessage || undefined,
+      sessionId: log.sessionId || undefined,
+    }));
   } catch (error) {
-    console.error("Recent queries retrieval error:", error);
+    console.error("[USSD Recent Queries Error]", error);
     return [];
   }
 }
 
 /**
- * Check for suspicious patterns (future enhancement)
- * Examples:
- * - Too many failed queries in a row
- * - Searching for same NIN repeatedly
- * - High query volume in short time
- *
- * @param officerId - Officer's ID
- * @returns Array of detected suspicious patterns
+ * Detect suspicious query patterns
+ * Basic implementation - can be enhanced
  */
 export async function detectSuspiciousPatterns(
   officerId: string
-): Promise<string[]> {
-  const patterns: string[] = [];
-
+): Promise<{
+  suspicious: boolean;
+  patterns: string[];
+  recommendation: string;
+}> {
   try {
-    // Get recent queries (last hour)
-    const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
-    const recentQueries = await prisma.uSSDQueryLog.findMany({
+    const patterns: string[] = [];
+
+    // Check 1: Excessive queries in last hour
+    const oneHourAgo = new Date();
+    oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+
+    const recentCount = await prisma.uSSDQueryLog.count({
       where: {
         officerId,
         timestamp: { gte: oneHourAgo },
       },
-      orderBy: { timestamp: "desc" },
     });
 
-    // Pattern 1: High failure rate (>50% in last 10 queries)
-    const last10 = recentQueries.slice(0, 10);
-    if (last10.length >= 5) {
-      const failures = last10.filter((q) => !q.success).length;
-      if (failures / last10.length > 0.5) {
-        patterns.push(
-          `High failure rate: ${failures}/${last10.length} recent queries failed`
-        );
+    if (recentCount > 20) {
+      patterns.push(`Excessive queries in last hour (${recentCount})`);
+    }
+
+    // Check 2: High failure rate
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+
+    const [todayTotal, todayFailed] = await Promise.all([
+      prisma.uSSDQueryLog.count({
+        where: { officerId, timestamp: { gte: todayStart } },
+      }),
+      prisma.uSSDQueryLog.count({
+        where: { officerId, timestamp: { gte: todayStart }, success: false },
+      }),
+    ]);
+
+    if (todayTotal > 10 && todayFailed / todayTotal > 0.5) {
+      patterns.push(`High failure rate (${Math.round((todayFailed / todayTotal) * 100)}%)`);
+    }
+
+    // Check 3: Repeated same searches
+    const recentSearches = await prisma.uSSDQueryLog.findMany({
+      where: {
+        officerId,
+        timestamp: { gte: oneHourAgo },
+      },
+      select: { searchTerm: true },
+    });
+
+    const searchCounts: Record<string, number> = {};
+    recentSearches.forEach((s) => {
+      searchCounts[s.searchTerm] = (searchCounts[s.searchTerm] || 0) + 1;
+    });
+
+    for (const [term, count] of Object.entries(searchCounts)) {
+      if (count > 5) {
+        patterns.push(`Repeated searches for same term (${count} times)`);
+        break;
       }
     }
 
-    // Pattern 2: Repeated searches for same term
-    const searchTerms = recentQueries.map((q) => q.searchTerm);
-    const termCounts = searchTerms.reduce((acc, term) => {
-      acc[term] = (acc[term] || 0) + 1;
-      return acc;
-    }, {} as Record<string, number>);
+    const suspicious = patterns.length > 0;
 
-    Object.entries(termCounts).forEach(([term, count]) => {
-      if (count >= 5) {
-        patterns.push(`Repeated searches for "${term}": ${count} times`);
-      }
-    });
-
-    // Pattern 3: Rapid queries (>20 in last hour)
-    if (recentQueries.length > 20) {
-      patterns.push(
-        `High query volume: ${recentQueries.length} queries in last hour`
-      );
-    }
+    return {
+      suspicious,
+      patterns,
+      recommendation: suspicious
+        ? "Review officer activity. May require admin intervention."
+        : "No suspicious activity detected",
+    };
   } catch (error) {
-    console.error("Pattern detection error:", error);
+    console.error("[USSD Suspicious Patterns Error]", error);
+    return {
+      suspicious: false,
+      patterns: [],
+      recommendation: "Error checking patterns",
+    };
   }
-
-  return patterns;
 }

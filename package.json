@@ -26,6 +26,7 @@
   "private": false,
   "scripts": {
     "dev": "next dev",
+    "dev:pwa": "ENABLE_PWA_DEV=true next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",

@@ -23,18 +23,38 @@ async function getEvidence() {
   }
 
   try {
-    const prisma = container.prismaClient;
-    const evidence = await prisma.evidence.findMany({
-      take: 500,
-      orderBy: { createdAt: 'desc' },
-      where: {
-        case: {
-          stationId: session.user.stationId,
-        },
-      },
-    });
+    // Use EvidenceRepository instead of direct Prisma queries
+    const evidenceRepo = container.evidenceRepository;
+    const evidenceEntities = await evidenceRepo.findAll(
+      { stationId: session.user.stationId },
+      500,
+      0
+    );
 
-    return evidence as any[];
+    // Map domain entities to component format
+    const evidence = evidenceEntities.map((e) => ({
+      id: e.id,
+      qrCode: e.qrCode,
+      caseId: e.caseId,
+      type: e.type,
+      description: e.description,
+      status: e.status,
+      collectedDate: e.collectedDate,
+      collectedLocation: e.collectedLocation,
+      isSealed: e.isSealed,
+      isDigital: e.isDigital(), // Method call
+      fileUrl: e.fileUrl,
+      fileName: e.fileName,
+      humanReadableSize: e.getHumanReadableFileSize(), // Method call
+      storageLocation: e.storageLocation,
+      tags: e.tags,
+      custodyTransferCount: e.getCustodyTransferCount(), // Method call
+      isCritical: e.isCritical(), // Method call
+      ageInDays: e.getAgeInDays(), // Method call
+      createdAt: e.createdAt,
+    }));
+
+    return evidence;
   } catch (error) {
     console.error("Error fetching evidence:", error);
     return [];
@@ -59,11 +79,11 @@ export default async function EvidencePage() {
 
   const evidence = await getEvidence();
 
-  // Calculate statistics
-  const sealedCount = evidence.filter((e: any) => e.isSealed).length;
-  const digitalCount = evidence.filter((e: any) => e.isDigital).length;
-  const criticalCount = evidence.filter((e: any) => e.isCritical).length;
-  const courtCount = evidence.filter((e: any) => e.status === "court").length;
+  // Calculate statistics (evidence is now mapped with properties, not methods)
+  const sealedCount = evidence.filter((e) => e.isSealed).length;
+  const digitalCount = evidence.filter((e) => e.isDigital).length;
+  const criticalCount = evidence.filter((e) => e.isCritical).length;
+  const courtCount = evidence.filter((e) => e.status === "court").length;
 
   return (
     <div className="space-y-6">

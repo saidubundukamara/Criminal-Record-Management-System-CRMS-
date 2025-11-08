@@ -193,12 +193,14 @@ async function sendMetric(report: PerformanceReport): Promise<void> {
     });
 
     if (!response.ok) {
-      // If failed, queue for retry
+      // If failed, queue for retry (silently in development)
       await queueMetric(report);
     }
   } catch (error) {
-    console.error('Error sending performance metric:', error);
-    // Queue for retry
+    // Queue for retry but don't log in development (API not implemented yet)
+    if (process.env.NODE_ENV !== 'development') {
+      console.error('Error sending performance metric:', error);
+    }
     await queueMetric(report);
   }
 }

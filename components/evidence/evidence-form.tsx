@@ -117,31 +117,48 @@ export function EvidenceForm({
     setIsSubmitting(true);
 
     try {
-      // In a real implementation, would upload file to S3 first
-      // For now, we'll simulate file upload with placeholder data
-      const fileData = uploadedFile
-        ? {
-            url: `https://s3.example.com/evidence/${Date.now()}-${uploadedFile.name}`,
-            name: uploadedFile.name,
-            size: uploadedFile.size,
-            mimeType: uploadedFile.type,
-            hash: `sha256-${Math.random().toString(36).substring(2)}`, // Placeholder
-          }
-        : undefined;
-
       const url = evidenceId ? `/api/evidence/${evidenceId}` : "/api/evidence";
       const method = evidenceId ? "PATCH" : "POST";
 
-      const payload = {
-        ...data,
-        tags,
-        file: fileData,
-      };
+      // Always use FormData for consistency (supports file uploads and matches API expectations)
+      const formData = new FormData();
+
+      // Add common form fields
+      formData.append('type', data.type);
+      formData.append('description', data.description);
+
+      if (evidenceId) {
+        // For updates, only include editable fields
+        if (data.collectedLocation) formData.append('collectedLocation', data.collectedLocation);
+        if (data.storageLocation) formData.append('storageLocation', data.storageLocation);
+        if (data.notes) formData.append('notes', data.notes);
+
+        // Add tags as comma-separated string
+        if (tags.length > 0) {
+          formData.append('tags', tags.join(','));
+        }
+      } else {
+        // For creation, include all required fields
+        formData.append('caseId', data.caseId);
+        formData.append('collectedDate', data.collectedDate);
+        formData.append('collectedLocation', data.collectedLocation);
+        if (data.storageLocation) formData.append('storageLocation', data.storageLocation);
+        if (data.notes) formData.append('notes', data.notes);
+
+        // Add tags as comma-separated string
+        if (tags.length > 0) {
+          formData.append('tags', tags.join(','));
+        }
+
+        // Add file if present
+        if (uploadedFile) {
+          formData.append('file', uploadedFile);
+        }
+      }
 
       const response = await fetch(url, {
         method,
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: formData,
       });
 
       if (!response.ok) {

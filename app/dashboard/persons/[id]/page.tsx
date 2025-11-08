@@ -294,14 +294,14 @@ export default async function PersonDetailPage({ params }: PageProps) {
                   </dd>
                 </div>
               )}
-              {personData.languagesSpoken.length > 0 && (
+              {personData.languagesSpoken?.length > 0 && (
                 <div className="md:col-span-2">
                   <dt className="text-gray-500 flex items-center gap-1">
                     <Languages className="h-4 w-4" />
                     Languages Spoken
                   </dt>
                   <dd className="font-medium text-gray-900 mt-1">
-                    {personData.languagesSpoken.join(", ")}
+                    {personData.languagesSpoken?.join(", ")}
                   </dd>
                 </div>
               )}
@@ -402,13 +402,13 @@ export default async function PersonDetailPage({ params }: PageProps) {
                 )}
               </h3>
             </div>
-            {personData.cases.length === 0 ? (
+            {personData.cases?.length === 0 ? (
               <p className="text-sm text-gray-500">
                 No cases linked to this person yet.
               </p>
             ) : (
               <div className="space-y-3">
-                {personData.cases.map((caseItem: any) => (
+                {personData.cases?.map((caseItem: any) => (
                   <div
                     key={caseItem.caseId}
                     className="flex items-start justify-between border-b pb-3 last:border-0"
