@@ -69,14 +69,14 @@ export class EvidenceRepository extends BaseRepository implements IEvidenceRepos
   private toWithCase(data: PrismaEvidenceWithCase): EvidenceWithCase {
     const evidence = this.toDomain(data);
 
-    return {
-      ...evidence,
-      case: {
-        caseNumber: data.case.caseNumber,
-        title: data.case.title,
-        status: data.case.status,
-      },
-    } as EvidenceWithCase;
+    // Add case property to the Evidence instance
+    (evidence as any).case = {
+      caseNumber: data.case.caseNumber,
+      title: data.case.title,
+      status: data.case.status,
+    };
+
+    return evidence as EvidenceWithCase;
   }
 
   /**
@@ -374,6 +374,7 @@ export class EvidenceRepository extends BaseRepository implements IEvidenceRepos
       data: {
         ...(dto.type && { type: dto.type }),
         ...(dto.description && { description: dto.description }),
+        ...(dto.collectedLocation !== undefined && { collectedLocation: dto.collectedLocation }),
         ...(dto.status && { status: dto.status }),
         ...(dto.fileUrl !== undefined && { storageUrl: dto.fileUrl }), // Map to Prisma field name
         ...(dto.fileName !== undefined && { fileName: dto.fileName }),

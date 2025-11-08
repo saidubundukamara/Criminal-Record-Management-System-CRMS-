@@ -53,21 +53,13 @@ async function getEvidence(id: string) {
   }
 
   try {
-    const prisma = container.prismaClient;
-    const evidence = await prisma.evidence.findUnique({
-      where: { id },
-      include: {
-        case: {
-          select: {
-            id: true,
-            caseNumber: true,
-            title: true,
-          },
-        },
-      },
-    });
+    // Use EvidenceService to get proper domain entity with case information
+    const evidence = await container.evidenceService.getEvidenceWithCase(
+      id,
+      session.user.id
+    );
 
-    return evidence as any;
+    return evidence;
   } catch (error) {
     console.error("Error fetching evidence:", error);
     return null;
@@ -97,7 +89,7 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
     notFound();
   }
 
-  const courtReadiness = evidenceData.isReadyForCourt;
+  const courtReadiness = evidenceData.isReadyForCourt();
 
   return (
     <div className="max-w-6xl mx-auto space-y-6">
@@ -141,11 +133,11 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
               <div className="flex flex-col gap-2">
                 <EvidenceTypeBadge type={evidenceData.type} size="lg" />
                 <EvidenceStatusBadge status={evidenceData.status} size="lg" />
-                {evidenceData.isCritical && (
-                  <Badge variant="destructive" className="text-sm">
-                    Critical
-                  </Badge>
-                )}
+                 {evidenceData.isCritical() && (
+                   <Badge variant="destructive" className="text-sm">
+                     Critical
+                   </Badge>
+                 )}
                 {evidenceData.isSealed && (
                   <Badge variant="default" className="bg-green-600 text-sm">
                     <Shield className="h-3 w-3 mr-1" />
@@ -167,36 +159,36 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
                   <p className="font-medium text-gray-900">
                     {format(new Date(evidenceData.collectedDate), "PPP p")}
                   </p>
-                  <p className="text-xs text-gray-500">
-                    {evidenceData.ageInDays} days ago
-                  </p>
+                   <p className="text-xs text-gray-500">
+                     {evidenceData.getAgeInDays()} days ago
+                   </p>
                 </div>
               </div>
 
-              <div className="flex items-start gap-2">
-                <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
-                <div>
-                  <p className="text-gray-500">Location</p>
-                  <p className="font-medium text-gray-900">
-                    {evidenceData.collectedLocation}
-                  </p>
-                </div>
-              </div>
+               <div className="flex items-start gap-2">
+                 <MapPin className="h-5 w-5 text-gray-400 mt-0.5" />
+                 <div>
+                   <p className="text-gray-500">Location</p>
+                   <p className="font-medium text-gray-900">
+                     {evidenceData.collectedLocation}
+                   </p>
+                 </div>
+               </div>
 
-              {evidenceData.currentCustodian && (
-                <div className="flex items-start gap-2">
-                  <Users className="h-5 w-5 text-gray-400 mt-0.5" />
-                  <div>
-                    <p className="text-gray-500">Current Custodian</p>
-                    <p className="font-medium text-gray-900">
-                      {evidenceData.currentCustodian.officerName}
-                    </p>
-                    <p className="text-xs text-gray-500">
-                      {evidenceData.currentCustodian.officerBadge}
-                    </p>
-                  </div>
-                </div>
-              )}
+               {evidenceData.getCurrentCustodian() && (
+                 <div className="flex items-start gap-2">
+                   <Users className="h-5 w-5 text-gray-400 mt-0.5" />
+                   <div>
+                     <p className="text-gray-500">Current Custodian</p>
+                     <p className="font-medium text-gray-900">
+                       {evidenceData.getCurrentCustodian()!.officerName}
+                     </p>
+                     <p className="text-xs text-gray-500">
+                       {evidenceData.getCurrentCustodian()!.officerBadge}
+                     </p>
+                   </div>
+                 </div>
+               )}
             </div>
           </div>
         </div>
@@ -240,8 +232,8 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-6">
-          {/* Digital File Info */}
-          {evidenceData.isDigital && (
+           {/* Digital File Info */}
+           {evidenceData.isDigital() && (
             <div className="bg-white rounded-lg border p-6">
               <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
                 <HardDrive className="h-5 w-5" />
@@ -256,9 +248,9 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
                 </div>
                 <div>
                   <dt className="text-gray-500">File Size</dt>
-                  <dd className="font-medium text-gray-900 mt-1">
-                    {evidenceData.humanReadableSize}
-                  </dd>
+                   <dd className="font-medium text-gray-900 mt-1">
+                     {evidenceData.getHumanReadableFileSize()}
+                   </dd>
                 </div>
                 <div>
                   <dt className="text-gray-500">File Type</dt>
@@ -272,14 +264,14 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
                     {evidenceData.fileHash}
                   </dd>
                 </div>
-                {evidenceData.fileUrl && (
-                  <div>
-                    <EvidenceDownloadButton
-                      evidenceId={evidenceData.id}
-                      fileName={evidenceData.fileName}
-                    />
-                  </div>
-                )}
+                 {evidenceData.fileUrl && evidenceData.fileName && (
+                   <div>
+                     <EvidenceDownloadButton
+                       evidenceId={evidenceData.id}
+                       fileName={evidenceData.fileName}
+                     />
+                   </div>
+                 )}
               </dl>
             </div>
           )}
@@ -375,14 +367,17 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
               Handling Officers
             </h3>
             <div className="space-y-2">
-              {evidenceData.handlingOfficers.map((officer: any) => (
+              {evidenceData.chainOfCustody.map((event: any, index: number) => (
                 <div
-                  key={officer.officerId}
+                  key={`${event.officerId}-${index}`}
                   className="flex items-center justify-between p-3 bg-gray-50 rounded"
                 >
                   <div>
-                    <p className="font-medium text-gray-900">{officer.officerName}</p>
-                    <p className="text-sm text-gray-600">{officer.officerBadge}</p>
+                    <p className="font-medium text-gray-900">{event.officerName}</p>
+                    <p className="text-sm text-gray-600">{event.officerBadge}</p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {event.action} • {format(new Date(event.timestamp), "MMM dd, yyyy HH:mm")}
+                    </p>
                   </div>
                 </div>
               ))}
@@ -419,9 +414,9 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
                         <Shield className="h-3 w-3 mr-1" />
                         Sealed
                       </Badge>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {format(new Date(evidenceData.sealedAt), "PPP")}
-                      </p>
+                       <p className="text-xs text-gray-500 mt-1">
+                         {evidenceData.sealedAt ? format(new Date(evidenceData.sealedAt), "PPP") : "Unknown"}
+                       </p>
                     </div>
                   ) : (
                     <Badge variant="outline" className="text-yellow-600">
@@ -443,12 +438,12 @@ export default async function EvidenceDetailPage({ params }: PageProps) {
                   </dd>
                 </div>
               )}
-              <div>
-                <dt className="text-gray-500">Transfers</dt>
-                <dd className="font-medium text-gray-900 mt-1">
-                  {evidenceData.custodyTransferCount}
-                </dd>
-              </div>
+               <div>
+                 <dt className="text-gray-500">Transfers</dt>
+                 <dd className="font-medium text-gray-900 mt-1">
+                   {evidenceData.getCustodyTransferCount()}
+                 </dd>
+               </div>
               <div>
                 <dt className="text-gray-500">Created At</dt>
                 <dd className="font-medium text-gray-900 mt-1">

@@ -46,6 +46,7 @@ export interface CreateEvidenceInput {
 export interface UpdateEvidenceInput {
   type?: EvidenceType;
   description?: string;
+  collectedLocation?: string;
   storageLocation?: string;
   tags?: string[];
   notes?: string;
@@ -293,6 +294,7 @@ export class EvidenceService {
     const dto: UpdateEvidenceDto = {
       ...(input.type && { type: input.type }),
       ...(input.description && { description: input.description }),
+      ...(input.collectedLocation !== undefined && { collectedLocation: input.collectedLocation }),
       ...(input.storageLocation !== undefined && { storageLocation: input.storageLocation }),
       ...(input.tags && { tags: input.tags }),
       ...(input.notes !== undefined && { notes: input.notes }),

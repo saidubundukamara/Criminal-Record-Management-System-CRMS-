@@ -171,7 +171,7 @@ export class PerformanceService {
     startDate.setDate(startDate.getDate() - days);
 
     // Filter metrics
-    let filteredMetrics = this.metrics.filter((m) => {
+    const filteredMetrics = this.metrics.filter((m) => {
       const inDateRange = m.timestamp >= startDate && m.timestamp <= endDate;
       const matchesMetric = !metricName || m.metricName === metricName;
       const matchesUser = !userId || m.userId === userId;

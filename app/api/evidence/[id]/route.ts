@@ -126,10 +126,28 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const { id } = await context.params;
-    const body = await request.json();
 
-    // Prepare input
-    const input: UpdateEvidenceInput = body;
+    // Parse form data (supports consistency with creation route)
+    const formData = await request.formData();
+
+    // Extract form fields
+    const type = formData.get("type") as string | null;
+    const description = formData.get("description") as string | null;
+    const collectedLocation = formData.get("collectedLocation") as string | null;
+    const storageLocation = formData.get("storageLocation") as string | null;
+    const tagsString = formData.get("tags") as string | null;
+    const tags = tagsString ? tagsString.split(",").map(t => t.trim()) : undefined;
+    const notes = formData.get("notes") as string | null;
+
+    // Prepare input (only include defined values)
+    const input: UpdateEvidenceInput = {
+      ...(type && { type: type as any }),
+      ...(description && { description }),
+      ...(collectedLocation !== null && { collectedLocation }),
+      ...(storageLocation !== null && { storageLocation }),
+      ...(tags && { tags }),
+      ...(notes !== null && { notes }),
+    };
 
     // Update evidence
     const evidence = await container.evidenceService.updateEvidence(

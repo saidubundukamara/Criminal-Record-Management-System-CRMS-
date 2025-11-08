@@ -33,7 +33,7 @@ export function Pagination({
 
     const halfVisible = Math.floor(maxVisiblePages / 2);
     let start = Math.max(currentPage - halfVisible, 1);
-    let end = Math.min(start + maxVisiblePages - 1, totalPages);
+    const end = Math.min(start + maxVisiblePages - 1, totalPages);
 
     // Adjust start if we're near the end
     if (end - start < maxVisiblePages - 1) {
