@@ -11,6 +11,18 @@ A **Pan-African Digital Public Good** for managing criminal records across the A
 
 ---
 
+## 📸 Screenshots
+
+### Main Dashboard
+![CRMS Dashboard](sample_screens/Dashboard.png)
+*Central command center with case statistics and recent activity*
+
+### Authentication
+![Login Interface](sample_screens/Login%20Page.png)
+*Secure badge + PIN authentication system*
+
+---
+
 ## 🌍 About
 
 CRMS is a **reusable, configurable open-source platform** designed for law enforcement agencies across Africa. With its pilot in Sierra Leone, CRMS can be deployed in any African country with configuration-based customization (no code forking required).
@@ -72,7 +84,11 @@ CRMS is designed as a **public good** to empower law enforcement agencies across
 - **Granular Permissions**: Resource (cases, persons, evidence), Action (CRUD), Scope (own, station, region, national)
 - **Account Security**: Lockout after 5 failed attempts, session expiry (15 minutes)
 
+
 ### 2. Case Management
+
+![Case Management Interface](sample_screens/Cases.png)
+*Comprehensive case tracking from initial report to prosecution*
 
 - **Case Tracking**: From initial report to prosecution and court
 - **Case Status Workflow**: Open → Investigating → Charged → Court → Closed
@@ -82,6 +98,9 @@ CRMS is designed as a **public good** to empower law enforcement agencies across
 - **Audit Trail**: Every case update is logged
 
 ### 3. Person Records
+
+![Vehicle Records Management](sample_screens/vehicle.png)
+*Comprehensive person and vehicle record management*
 
 - **National ID Integration**: Supports any national ID system (NIN, Ghana Card, etc.)
 - **Biometric Data**: Fingerprints (SHA-256 hashed), photos
@@ -107,6 +126,9 @@ CRMS is designed as a **public good** to empower law enforcement agencies across
 
 ### 6. Background Checks
 
+![Background Check System](sample_screens/BG_check.png)
+*Citizen and officer background verification with audit trails*
+
 - **Request Types**: Officer, citizen, employer, visa
 - **Citizen Access**: Via USSD (feature phones) or web
 - **Redacted Results**: Citizens receive "Clear" or "Record exists - visit station"
@@ -114,6 +136,10 @@ CRMS is designed as a **public good** to empower law enforcement agencies across
 - **Certificate Generation**: PDF certificates for clean records
 
 ### 7. Offline-First Architecture
+
+![PWA Interface 1](sample_screens/PWA_1.png)
+![PWA Interface 2](sample_screens/PWA_2.png)
+*Progressive Web App functionality for offline operation*
 
 - **Service Workers**: Cache API responses for offline use
 - **IndexedDB**: Store data locally for offline CRUD operations
@@ -126,6 +152,18 @@ CRMS is designed as a **public good** to empower law enforcement agencies across
 - **Case Status**: `*123*2*CaseNumber#`
 - **Wanted Persons**: `*123*3#` (search by name)
 - **Works on Feature Phones**: No smartphone or data plan required
+
+---
+
+## 🖼️ Interface Preview
+
+| Dashboard | Case Management | Background Checks |
+|-----------|-----------------|-------------------|
+| ![Dashboard](sample_screens/Dashboard.png) | ![Cases](sample_screens/Cases.png) | ![BG Check](sample_screens/BG_check.png) |
+
+| Authentication | PWA Features | Vehicle Records |
+|----------------|--------------|-----------------|
+| ![Login](sample_screens/Login%20Page.png) | ![PWA](sample_screens/PWA_1.png) | ![Vehicle](sample_screens/vehicle.png) |
 
 ---
 
