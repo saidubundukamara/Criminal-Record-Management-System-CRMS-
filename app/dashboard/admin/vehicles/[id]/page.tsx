@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, AlertTriangle, Check, Package, Edit, ArrowLeft, Calendar, User, MapPin } from "lucide-react";
 import { format } from "date-fns";
+import { container } from "@/src/di/container";
 
 export const metadata = {
   title: "Vehicle Details | CRMS",
@@ -21,17 +22,20 @@ export const metadata = {
 
 async function getVehicle(id: string) {
   try {
-    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/vehicles/${id}`, {
-      cache: 'no-store',
-    });
+    const vehicle = await container.vehicleRepository.findById(id);
+    if (!vehicle) return null;
 
-    if (!response.ok) {
-      if (response.status === 404) return null;
-      throw new Error("Failed to fetch vehicle");
-    }
+    // Fetch station information
+    const station = await container.stationRepository.findById(vehicle.stationId);
 
-    const data = await response.json();
-    return data.vehicle;
+    return {
+      ...vehicle.toJSON(),
+      station: station ? {
+        id: station.id,
+        name: station.name,
+        code: station.code,
+      } : null,
+    } as any;
   } catch (error) {
     console.error("Error fetching vehicle:", error);
     return null;

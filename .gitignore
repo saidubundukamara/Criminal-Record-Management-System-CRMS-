@@ -78,3 +78,4 @@ next-env.d.ts
 # Local testing data
 test-data/
 *.test.db
+dev.pid

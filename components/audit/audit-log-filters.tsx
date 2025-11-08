@@ -39,7 +39,7 @@ interface AuditLogFiltersProps {
 
 // Entity types available in the system
 const ENTITY_TYPES = [
-  { value: "", label: "All Entity Types" },
+  { value: "all", label: "All Entity Types" },
   { value: "case", label: "Case" },
   { value: "person", label: "Person" },
   { value: "evidence", label: "Evidence" },
@@ -52,7 +52,7 @@ const ENTITY_TYPES = [
 
 // Common action types
 const ACTIONS = [
-  { value: "", label: "All Actions" },
+  { value: "all", label: "All Actions" },
   { value: "create", label: "Create" },
   { value: "read", label: "Read" },
   { value: "update", label: "Update" },
@@ -66,7 +66,7 @@ const ACTIONS = [
 
 // Success status options
 const SUCCESS_OPTIONS = [
-  { value: "", label: "All Statuses" },
+  { value: "all", label: "All Statuses" },
   { value: "true", label: "Success Only" },
   { value: "false", label: "Failed Only" },
 ];
@@ -87,7 +87,7 @@ export function AuditLogFilters({
   const handleChange = (key: keyof FilterState, value: string | boolean | undefined) => {
     setLocalFilters((prev) => ({
       ...prev,
-      [key]: value === "" ? undefined : value,
+      [key]: value === "all" ? undefined : value,
     }));
   };
 
@@ -113,7 +113,7 @@ export function AuditLogFilters({
         <div className="space-y-2">
           <Label htmlFor="entityType">Entity Type</Label>
           <Select
-            value={localFilters.entityType || ""}
+            value={localFilters.entityType || "all"}
             onValueChange={(value) => handleChange("entityType", value)}
           >
             <SelectTrigger id="entityType">
@@ -133,7 +133,7 @@ export function AuditLogFilters({
         <div className="space-y-2">
           <Label htmlFor="action">Action</Label>
           <Select
-            value={localFilters.action || ""}
+            value={localFilters.action || "all"}
             onValueChange={(value) => handleChange("action", value)}
           >
             <SelectTrigger id="action">
@@ -155,11 +155,11 @@ export function AuditLogFilters({
           <Select
             value={
               localFilters.success === undefined
-                ? ""
+                ? "all"
                 : localFilters.success.toString()
             }
             onValueChange={(value) =>
-              handleChange("success", value === "" ? undefined : value === "true")
+              handleChange("success", value === "all" ? undefined : value === "true")
             }
           >
             <SelectTrigger id="success">

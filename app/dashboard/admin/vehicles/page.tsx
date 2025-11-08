@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Car, AlertTriangle, Check, Package, Plus, Eye, Download } from "lucide-react";
+import { container } from "@/src/di/container";
 
 export const metadata = {
   title: "Vehicle Management | CRMS",
@@ -20,14 +21,8 @@ export const metadata = {
 
 async function getVehicles() {
   try {
-    const response = await fetch(`${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/vehicles?limit=100`, {
-      cache: 'no-store',
-    });
-
-    if (!response.ok) return [];
-
-    const data = await response.json();
-    return data.vehicles || [];
+    const result = await container.vehicleRepository.search({}, { limit: 1000 });
+    return result.vehicles;
   } catch (error) {
     console.error("Error fetching vehicles:", error);
     return [];
