@@ -2,6 +2,7 @@
 
 import { SessionProvider } from "next-auth/react";
 import { ReactNode } from "react";
+import { ServiceWorkerProvider } from "./pwa/service-worker-provider";
 
 interface ProvidersProps {
   children: ReactNode;
@@ -10,6 +11,7 @@ interface ProvidersProps {
 export function Providers({ children }: ProvidersProps) {
   return (
     <SessionProvider>
+      <ServiceWorkerProvider />
       {children}
     </SessionProvider>
   );

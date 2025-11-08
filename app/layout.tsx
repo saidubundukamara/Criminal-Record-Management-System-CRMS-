@@ -4,6 +4,9 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { WebVitalsReporter } from "@/components/performance/web-vitals-reporter";
 import { Providers } from "@/components/providers";
+import { PWAComponents } from "@/components/pwa/pwa-components";
+import { RoutePrefetcher } from "@/components/pwa/route-prefetcher";
+import { OfflineNavigationHandler } from "@/components/pwa/offline-navigation-handler";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -50,6 +53,9 @@ export default function RootLayout({
           {children}
           <Toaster />
           <WebVitalsReporter />
+          <PWAComponents />
+          <RoutePrefetcher />
+          <OfflineNavigationHandler />
         </Providers>
       </body>
     </html>
